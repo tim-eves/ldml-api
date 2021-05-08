@@ -1,0 +1,11 @@
+[package]
+name = "ldml-api"
+version = "0.1.0"
+authors = ["Tim Eves <tim_eves@sil.org>"]
+edition = "2018"
+
+[dependencies]
+rocket = "0.4.5"
+rocket_contrib = "0.4.5"
+nom = "5"
+xml-rs = "0.8"

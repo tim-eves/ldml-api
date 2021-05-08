@@ -1,0 +1,24 @@
+<h1>LDML API</h1>
+<p>A writing system tag is required to obtain an LDML file - e.g.,</p>
+<ul>
+<li>https://ldml.api.sil.org/fr</li>
+<li>https://ldml.api.sil.org/en-GB</li>
+<li>https://ldml.api.sil.org/bem</li>
+<li>https://ldml.api.sil.org/dje-Arab</li>
+</ul><br />
+<p>To include parameters, follow base URL with ?, eg, https://ldml.api.sil.org/bem?query=tags</p>
+<p>Optional parameters:</p>
+<ul>
+  <li><strong>ext</strong> - extension of file returned; default = 'xml'</li>
+  <li><strong>flatten</strong> - return a flattened LDML file that includes inherited values; default = 1</li>
+  <li><strong>inc[]</strong> - a list of XPATH of elements to include in the generated LDML</li>
+  <li><strong>query</strong>
+    <ul>
+      <li><strong>=langtags</strong> - return a file containing all the tags; use ext=txt or ext=json</li>
+      <li><strong>=tags</strong> - return tags that are equivalent to the given writing system tag</li>
+    </ul>
+  </li>
+  <li><strong>revid</strong> - if this matches the revid in the file found, return NOT MODIFIED</li>
+  <li><strong>uid</strong> - treat alternative proposed values with this uid as default values</li>
+  <li><strong>ws_id</strong> - to specify writing system tag; ?ws_id=bem is equivalent to /bem</li>
+</ul>
