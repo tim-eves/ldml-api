@@ -46,11 +46,13 @@ impl Tag {
 
     pub fn extensions<T, C: AsRef<[T]>>(mut self, c: C) -> Self where T: AsRef<str> + ToOwned {
         self.extension = c.as_ref().iter().map(|s| s.as_ref().to_owned()).collect();
+        self.extension.sort();
         self
     }
 
     pub fn add_extension<T: AsRef<str>>(mut self, x: T) -> Self {
         self.extension.push(x.as_ref().to_owned());
+        self.extension.sort();
         self
     }
 }
@@ -223,7 +225,7 @@ mod parser {
     fn grandfathered_regular(input: &str) -> IResult<&str, Tag> {
         context("regular grandfathered", 
             alt(( 
-                // fixed_parse ("cel-gaulish","cel",None,"gaulish"),
+                fixed_parse!("cel-gaulish"),
                 fixed_parse!("art-lojban","jbo"),
                 fixed_parse!("zh-min-nan","nan"),
                 fixed_parse!("zh-hakka","hak"),
@@ -300,6 +302,7 @@ mod tests {
     fn grandfathered() {
         let gf_cases = [
             ("art-lojban",      Ok(Tag::lang("jbo"))),
+            ("cel-gaulish",     Ok(Tag::lang("cel-gaulish"))),
             ("en-GB-oed",       Ok(Tag::lang("en")
                                         .region("GB")
                                         .add_variant("oxendict"))),
