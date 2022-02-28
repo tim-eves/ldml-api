@@ -15,6 +15,7 @@ use tower_http::{
     trace::TraceLayer,
 };
 
+mod config;
 mod tag;
 mod toggle;
 mod langtags;
@@ -125,6 +126,10 @@ async fn main() -> io::Result<()> {
     }
     tracing_subscriber::fmt::init();
     
+    // Load configuraion
+    let cfg = config::profiles::default()?;
+    tracing::debug!("loaded profiles {:?}", cfg.keys().collect::<Vec<_>>());
+
     // build our application with a single route
     let static_help = get_service(ServeFile::new("static/index.html"))
                         .handle_error(internal_error);

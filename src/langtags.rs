@@ -23,6 +23,7 @@ impl LangTags {
         where E: Into<Box<dyn Error + Send + Sync>> {
             io::Error::new(io::ErrorKind::InvalidData, error)
         }
+
         let parse = |s: &str| s.trim().trim_start_matches('*').parse::<Tag>();
         let mut buf = String::new();
         reader.read_to_string(&mut buf)?;

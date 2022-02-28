@@ -1,0 +1,2 @@
+*aa = *aa-ET = aa-Latn = aa-Latn-ET
+aa-Arab = aa-Arab-ET

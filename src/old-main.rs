@@ -47,23 +47,23 @@ use std::{
 // use tag::Tag;
 // use langtags::{ LangTags, TagSet };
 
-impl<'a> FromParam<'a> for Tag {
-    type Error = &'a RawStr;
+// impl<'a> FromParam<'a> for Tag {
+//     type Error = &'a RawStr;
 
-    #[inline(always)]
-    fn from_param(param: &'a RawStr) -> Result<Self, Self::Error> {
-        Tag::from_str(param.as_str()).map_err(|_| param)
-    }
-}
+//     #[inline(always)]
+//     fn from_param(param: &'a RawStr) -> Result<Self, Self::Error> {
+//         Tag::from_str(param.as_str()).map_err(|_| param)
+//     }
+// }
 
-impl<'a> FromFormValue<'a> for Tag {
-    type Error = &'a RawStr;
+// impl<'a> FromFormValue<'a> for Tag {
+//     type Error = &'a RawStr;
 
-    #[inline(always)]
-    fn from_form_value(param: &'a RawStr) -> Result<Self, Self::Error> {
-        Tag::from_str(param.as_str()).map_err(|_| param)
-    }
-}
+//     #[inline(always)]
+//     fn from_form_value(param: &'a RawStr) -> Result<Self, Self::Error> {
+//         Tag::from_str(param.as_str()).map_err(|_| param)
+//     }
+// }
 
 // #[derive(Debug, Clone, Copy, Default)]
 // struct Toggle(bool);
@@ -78,17 +78,17 @@ impl<'a> FromFormValue<'a> for Tag {
 //     fn deref(&self) -> &Self::Target { &self.0 }
 // }
 
-impl<'a> FromFormValue<'a> for Toggle {
-    type Error = &'a RawStr;
+// impl<'a> FromFormValue<'a> for Toggle {
+//     type Error = &'a RawStr;
 
-    #[inline(always)]
-    fn from_form_value(param: &'a RawStr) -> Result<Self, Self::Error> {
-        Ok(match param.to_ascii_lowercase().as_str() {
-            ""|"0"|"no"|"false"|"off" => Toggle::OFF, 
-            _ => Toggle::ON
-        })    
-    }    
-}    
+//     #[inline(always)]
+//     fn from_form_value(param: &'a RawStr) -> Result<Self, Self::Error> {
+//         Ok(match param.to_ascii_lowercase().as_str() {
+//             ""|"0"|"no"|"false"|"off" => Toggle::OFF, 
+//             _ => Toggle::ON
+//         })    
+//     }    
+// }    
 
 
 #[derive(Debug)]
@@ -344,68 +344,68 @@ fn filter_toplevels_from_ldml<R1:'static + io::Read + Send + Sync>(reader: R1, t
     receiver
 }
 
-#[derive(Debug)]
-struct APIConfig {
-    sldr_dirs: (PathBuf, PathBuf),
-    langtags_dirs: (PathBuf, PathBuf),
-    langtags: (LangTags, LangTags),
-    sendfile_method: Option<String>
-}
+// #[derive(Debug)]
+// struct APIConfig {
+//     sldr_dirs: (PathBuf, PathBuf),
+//     langtags_dirs: (PathBuf, PathBuf),
+//     langtags: (LangTags, LangTags),
+//     sendfile_method: Option<String>
+// }
 
-impl APIConfig {
-    fn langtags(&self, staging: bool) -> &LangTags { 
-        if staging { &self.langtags.1 } else { &self.langtags.0 }
-    }
+// impl APIConfig {
+//     fn langtags(&self, staging: bool) -> &LangTags { 
+//         if staging { &self.langtags.1 } else { &self.langtags.0 }
+//     }
 
-    fn langtags_path(&self, staging: bool) -> &Path { 
-        if staging { &self.langtags_dirs.1 } else { &self.langtags_dirs.0 }
-    }
+//     fn langtags_path(&self, staging: bool) -> &Path { 
+//         if staging { &self.langtags_dirs.1 } else { &self.langtags_dirs.0 }
+//     }
 
-    fn sldr_path(&self, staging: bool, flat: bool) -> PathBuf {
-        if staging { &self.sldr_dirs.1 } else { &self.sldr_dirs.0 }
-            .join(if flat { "flat" } else { "unflat" })
-    }
+//     fn sldr_path(&self, staging: bool, flat: bool) -> PathBuf {
+//         if staging { &self.sldr_dirs.1 } else { &self.sldr_dirs.0 }
+//             .join(if flat { "flat" } else { "unflat" })
+//     }
 
-    fn get(config: &Config) -> Result<APIConfig, ConfigError> {
-        use std::fs::File;
+//     fn get(config: &Config) -> Result<APIConfig, ConfigError> {
+//         use std::fs::File;
 
-        let sendfile = config.get_str("sendfile_method").map(str::to_string).ok();
-        config.get_table("ldml")
-            .and_then(|ldml| {
-                let staging = ldml.get("staging").and_then(Value::as_table);
-                let sp: PathBuf = ldml.get("sldr")
-                    .and_then(Value::as_str)
-                    .unwrap_or("static/")
-                    .into();
-                let lp: PathBuf = ldml.get("langtags")
-                    .and_then(Value::as_str)
-                    .unwrap_or("static/")
-                    .into();
-                let ss: PathBuf = staging
-                    .and_then(|t| t.get("sldr")
-                        .and_then(Value::as_str)
-                        .map(PathBuf::from))
-                    .unwrap_or(sp.clone());
-                let ls: PathBuf = staging
-                    .and_then(|t| t.get("langtags")
-                        .and_then(Value::as_str)
-                        .map(PathBuf::from))
-                    .unwrap_or(lp.clone());
-                let langtags = File::open(lp.join("langtags.txt"))
-                    .and_then(LangTags::from_reader)
-                    .map_err(|err| ConfigError::Io(err, "ldml.langtags"))?;
-                let langtags_staging = File::open(ls.join("langtags.txt"))
-                    .and_then(LangTags::from_reader)
-                    .map_err(|err| ConfigError::Io(err, "ldml.staging.langtags"))?;
-                Ok(APIConfig {
-                    sldr_dirs:       (sp, ss),
-                    langtags_dirs:   (lp, ls),
-                    langtags:        (langtags, langtags_staging),
-                    sendfile_method: sendfile
-                })
-            })
-    }
-}
+//         let sendfile = config.get_str("sendfile_method").map(str::to_string).ok();
+//         config.get_table("ldml")
+//             .and_then(|ldml| {
+//                 let staging = ldml.get("staging").and_then(Value::as_table);
+//                 let sp: PathBuf = ldml.get("sldr")
+//                     .and_then(Value::as_str)
+//                     .unwrap_or("static/")
+//                     .into();
+//                 let lp: PathBuf = ldml.get("langtags")
+//                     .and_then(Value::as_str)
+//                     .unwrap_or("static/")
+//                     .into();
+//                 let ss: PathBuf = staging
+//                     .and_then(|t| t.get("sldr")
+//                         .and_then(Value::as_str)
+//                         .map(PathBuf::from))
+//                     .unwrap_or(sp.clone());
+//                 let ls: PathBuf = staging
+//                     .and_then(|t| t.get("langtags")
+//                         .and_then(Value::as_str)
+//                         .map(PathBuf::from))
+//                     .unwrap_or(lp.clone());
+//                 let langtags = File::open(lp.join("langtags.txt"))
+//                     .and_then(LangTags::from_reader)
+//                     .map_err(|err| ConfigError::Io(err, "ldml.langtags"))?;
+//                 let langtags_staging = File::open(ls.join("langtags.txt"))
+//                     .and_then(LangTags::from_reader)
+//                     .map_err(|err| ConfigError::Io(err, "ldml.staging.langtags"))?;
+//                 Ok(APIConfig {
+//                     sldr_dirs:       (sp, ss),
+//                     langtags_dirs:   (lp, ls),
+//                     langtags:        (langtags, langtags_staging),
+//                     sendfile_method: sendfile
+//                 })
+//             })
+//     }
+// }
 
 // fn main() -> Result<(), std::io::Error> {
 //     rocket::ignite()
