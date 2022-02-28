@@ -1,9 +1,10 @@
+use serde_with::DeserializeFromStr;
 use std::{
     ops::Deref,
     str::FromStr,
 };
 
-#[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, DeserializeFromStr, Eq, PartialEq)]
 pub struct Toggle(bool);
 
 impl Toggle {

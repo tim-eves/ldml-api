@@ -1,9 +1,14 @@
+use serde_with::{
+    DeserializeFromStr,
+    SerializeDisplay,
+};
 use std::{
     // cmp::Ordering, 
     fmt::Display,
 };
 
 #[derive(Clone,Debug,Default,Eq,Hash,Ord,PartialEq,PartialOrd)]
+#[derive(DeserializeFromStr,SerializeDisplay)]
 pub struct Tag {
     pub lang: String,
     pub script: Option<String>,
