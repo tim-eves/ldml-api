@@ -1,10 +1,9 @@
 use std::{
-    cmp::Ordering, 
-    default::default,
+    // cmp::Ordering, 
     fmt::Display,
 };
 
-#[derive(Clone,Debug,Default,Eq,Hash,PartialEq)]
+#[derive(Clone,Debug,Default,Eq,Hash,Ord,PartialEq,PartialOrd)]
 pub struct Tag {
     pub lang: String,
     pub script: Option<String>,
@@ -16,11 +15,11 @@ pub struct Tag {
 
 impl Tag {
     pub fn lang<T: AsRef<str>>(l: T) -> Self {
-        Tag { lang: l.as_ref().to_owned(), ..default() }
+        Tag { lang: l.as_ref().to_owned(), ..Default::default() }
     }
     
     pub fn privateuse<T: AsRef<str>>(p: T) -> Self {
-        Tag {private: Some(p.as_ref().to_owned()), ..default() }
+        Tag {private: Some(p.as_ref().to_owned()), ..Default::default() }
     }
 
     pub fn script<T: AsRef<str>>(mut self, s: T) -> Self {
@@ -69,39 +68,47 @@ impl Display for Tag {
         }
         if let Some(private) = &self.private { 
             if !self.lang.is_empty() { f.write_str("-")?; }
-            f.write_str(&private)?; 
+            f.write_str(private)?; 
         }
         Ok(())
     }
 }
-        
-impl PartialOrd for Tag {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        if self.lang.eq(&other.lang) 
-        && self.variant.eq(&other.variant)
-        && self.extension.eq(&other.extension)
-        && self.private.eq(&other.private) {
-            let script = match (self.script.as_ref(), other.script.as_ref()) {
-                (   a,    b) if a == b => Some(Ordering::Equal),
-                (None,   _ ) => Some(Ordering::Less),
-                (   _, None) => Some(Ordering::Greater),
-                _ => None  
-            }?;
 
-            let region = match (self.region.as_ref(), other.region.as_ref()) {
-                (   a,    b) if a == b => Some(Ordering::Equal),
-                (None,   _ ) => Some(Ordering::Less),
-                (   _, None) => Some(Ordering::Greater),
-                _ => None  
-            }?;
+// impl Ord for Tag {
+//     fn cmp(&self, other: &Self) -> Ordering {
+//         self.lang.cmp(&other.lang)
+//             .then(self.variant.cmp(&other.variant))
+//             .then(self.extension.cmp(&other.extension))
+//             .then(self.private.cmp(&other.private))
+//             .then(self.script.cmp(&other.script))
+//             .then(self.region.cmp(&other.region))
+//     }
+// }
 
-            match (script, region) {
-                (Ordering::Equal, r) => Some(r),
-                (s,               _) => Some(s)
-            }
-        } else { None} 
-    }
-}
+// impl PartialOrd for Tag {
+//     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+//         if self.lang.eq(&other.lang) 
+//         && self.variant.eq(&other.variant)
+//         && self.extension.eq(&other.extension)
+//         && self.private.eq(&other.private) {
+//             let script = match (self.script.as_ref(), other.script.as_ref()) {
+//                 (   a,    b) if a == b => Some(Ordering::Equal),
+//                 (None,   _ ) => Some(Ordering::Less),
+//                 (   _, None) => Some(Ordering::Greater),
+//                 _ => None  
+//             }?;
+
+//             let region = match (self.region.as_ref(), other.region.as_ref()) {
+//                 (   a,    b) if a == b => Some(Ordering::Equal),
+//                 (None,   _ ) => Some(Ordering::Less),
+//                 (   _, None) => Some(Ordering::Greater),
+//                 _ => None  
+//             }?;
+
+//            Some(script.then(region))
+//         } else { None } 
+//     }
+// }
 
 mod parser {
     use super::Tag;
@@ -174,7 +181,7 @@ mod parser {
         ($f:literal) => (fixed_parse($f, None, None, None));
         ($f:literal, $l:literal) => (fixed_parse($f, $l, None, None));
         ($f:literal, $l:literal, $r:literal) => (fixed_parse($f, $l, $r, None));
-        ($f:literal, $l:literal, $r:literal, $v:tt) => (fixed_parse($f, $l, $r, $v));
+        ($f:literal, $l:literal, $r:tt, $v:literal) => (fixed_parse($f, $l, $r, $v));
     }
 
     fn langtag(input: &str) -> IResult<&str, Tag> {
@@ -219,12 +226,12 @@ mod parser {
                 // fixed_parse ("cel-gaulish","cel",None,"gaulish"),
                 fixed_parse!("art-lojban","jbo"),
                 fixed_parse!("zh-min-nan","nan"),
-                fixed_parse!("zh-guoyu","cmn"),
                 fixed_parse!("zh-hakka","hak"),
+                fixed_parse!("zh-guoyu","cmn"),
                 fixed_parse!("zh-xiang","hsn"),
+                fixed_parse!("zh-min"),
                 fixed_parse!("no-bok","nb"),
                 fixed_parse!("no-nyn","nn"),
-                fixed_parse!("zh-min","zh-min")
             )))(input)
     }
 
@@ -265,7 +272,7 @@ mod tests {
     use super::Tag;
 
     #[test]
-    fn test_display() {
+    fn display() {
         let tag = Tag::lang("en-aaa-ccc")
             .script("Latn")
             .region("US")
@@ -277,22 +284,25 @@ mod tests {
     }
 
     #[test]
-    fn test_sorting() {
+    fn sorting() {
         let aa          = Tag::lang("aa");
         let aa_et       = Tag::lang("aa").region("ET");
         let aa_latn     = Tag::lang("aa").script("Latn");
         let aa_latn_et  = Tag::lang("aa").script("Latn").region("ET");
+        let standard = [&aa, &aa_et, &aa_latn, &aa_latn_et];
+        let mut test = [&aa_latn_et, &aa, &aa_et, &aa_latn];
+        test.sort();
 
-        assert!(false == [&aa_latn_et, &aa, &aa_et, &aa_latn].is_sorted());
-        assert!(true == [&aa, &aa_et, &aa_latn, &aa_latn_et].is_sorted());
+        assert_eq!(test, standard);
     }
 
     #[test]
-    fn test_grandfathered() {
+    fn grandfathered() {
         let gf_cases = [
             ("art-lojban",      Ok(Tag::lang("jbo"))),
-            ("cel-gaulish",     Ok(Tag::lang("cel").add_variant("gaulish"))),
-            ("en-GB-oed",       Ok(Tag::lang("en").region("GB").add_variant("oxendict"))),
+            ("en-GB-oed",       Ok(Tag::lang("en")
+                                        .region("GB")
+                                        .add_variant("oxendict"))),
             ("i-ami",           Ok(Tag::lang("ami"))),
             ("i-bnn",           Ok(Tag::lang("bnn"))),
             ("i-default",       Ok(Tag::lang("i-default"))),
@@ -323,7 +333,7 @@ mod tests {
     }
 
     #[test]
-    fn test_complex() {
+    fn complex() {
         use nom::{ Err, error::ErrorKind };
         let gf_cases = [
             ("-",                   Err(Err::Error(("-".to_string(), ErrorKind::Tag)))),
@@ -339,7 +349,8 @@ mod tests {
             ("en-aaa-ccc-Latn-US-2abc-what2-a-bable-q-babbel-x-priv1",
                                     Ok(Tag::lang("en-aaa-ccc").script("Latn").region("US")
                                         .variants(["2abc","what2"])
-                                        .extensions(["a-bable", "q-babbel"])
+                                        .add_extension("a-bable") 
+                                        .add_extension("q-babbel")
                                         .private("x-priv1"))),
             ("x-priv1-priv2-xpriv3",Ok(Tag::privateuse("x-priv1-priv2-xpriv3"))),
             ("en-gan-yue-Latn",     Ok(Tag::lang("en-gan-yue").script("Latn").clone())),
