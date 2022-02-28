@@ -30,6 +30,7 @@ use std::{
 #[macro_use] extern crate rocket;
 
 mod tag;
+mod toggle;
 mod langtags;
 
 /*
@@ -46,6 +47,7 @@ mod langtags;
 */
 
 use tag::Tag;
+use toggle::Toggle;
 use langtags::{ LangTags, TagSet };
 
 impl<'a> FromParam<'a> for Tag {
@@ -65,32 +67,6 @@ impl<'a> FromFormValue<'a> for Tag {
         Tag::from_str(param.as_str()).map_err(|_| param)
     }
 }
-
-#[derive(Debug, Clone, Copy, Default)]
-struct Toggle(bool);
-
-impl Toggle {
-    const ON: Toggle = Toggle(true);
-    const OFF: Toggle = Toggle(false);
-}
-
-impl Deref for Toggle {
-    type Target = bool;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-
-impl<'a> FromFormValue<'a> for Toggle {
-    type Error = &'a RawStr;
-
-    #[inline(always)]
-    fn from_form_value(param: &'a RawStr) -> Result<Self, Self::Error> {
-        Ok(match param.to_ascii_lowercase().as_str() {
-            ""|"0"|"no"|"false"|"off" => Toggle::OFF, 
-            _ => Toggle::ON
-        })    
-    }    
-}    
-
 
 #[derive(Debug)]
 struct SendFile(NamedFile);
