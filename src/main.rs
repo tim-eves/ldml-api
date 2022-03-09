@@ -1,18 +1,20 @@
 use axum::{
     AddExtensionLayer,
+    body::StreamBody,
     extract::{ Extension, Query, Path },
-    http::StatusCode,
-    response::{ IntoResponse },
-    routing::{ get, get_service },
+    http::{ header, HeaderValue, StatusCode },
+    response::{ Headers, IntoResponse },
+    routing::{ get },
     Router,
 };
 use serde::Deserialize;
 use std::{
-    fmt::Display,
     io,
+    path,
+    sync::Arc,
 };
+use tokio::fs;
 use tower_http::{
-    services::ServeFile,
     trace::TraceLayer,
 };
 
@@ -35,6 +37,8 @@ mod langtags;
 */
 
 use crate::tag::Tag;
+use crate::langtags::{ LangTags, TagSet };
+use crate::config::Config;
 use crate::toggle::Toggle;
 
 
@@ -57,6 +61,7 @@ async fn main() -> io::Result<()> {
         include_str!("index.html")
     }
     let app = Router::new()
+        .route("/langtags.:ext", get(langtags))
         .route("/:ws_id", get(writing_system_endpoint))
         .route("/index.html", get(static_help))
         .layer(AddExtensionLayer::new(cfg["staging"].clone()))
@@ -73,8 +78,52 @@ async fn main() -> io::Result<()> {
 }
 
 
+async fn stream_file(path: &path::Path, ) -> impl IntoResponse {
+    // Let's avoid path traversal attacks, or other shenanigans.
+    let file_name = path.file_name()
+        .ok_or((StatusCode::BAD_REQUEST, String::default()))?
+        .to_string_lossy();
 
-type APIResponse = (StatusCode, &'static str);
+    let file = fs::File::open(path).await;
+    let file = match file {
+        Ok(file) => file,
+        Err(err) => return Err(
+            (
+                StatusCode::NOT_FOUND, 
+                format!("Cannot open: {err}: {}", 
+                        path.file_name()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                )
+            )
+        ),
+    };
+    let guess = mime_guess::from_path(path);
+    let mime = guess
+        .first_raw()
+        .map(HeaderValue::from_static)
+        .unwrap_or_else(|| {
+            HeaderValue::from_str(mime::APPLICATION_OCTET_STREAM.as_ref()).unwrap()
+        });
+    let stream = tokio_util::io::ReaderStream::new(file);
+    let body = StreamBody::new(stream);
+    let headers = Headers([
+        (header::CONTENT_TYPE, mime),
+        (
+            header::CONTENT_DISPOSITION,
+            HeaderValue::from_str(&format!("attachment; filename=\"{file_name}\"")).expect(""),
+        ),
+    ]);
+
+    Ok((headers, body))
+}
+
+    
+async fn langtags(Path(ext): Path<String>, Extension(cfg): Extension<Arc<Config>>) -> impl IntoResponse
+{
+    tracing::debug!("langtags.{ext}");
+    stream_file(&cfg.langtags_dir.join("langtags").with_extension(ext)).await
+}    
 
 
 #[derive(Deserialize)]
