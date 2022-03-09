@@ -156,39 +156,45 @@ struct WSParams {
     flatten: Option<Toggle>,
     inc: Option<String>,
     revid: Option<String>,
-    staging: Option<Toggle>,
     uid: Option<u32>,
 }
 
-async fn writing_system_endpoint(Path(ws): Path<Vec<Tag>>, Query(params): Query<WSParams>) -> APIResponse {
+async fn writing_system_endpoint(Path(ws): Path<Tag>, Query(params): Query<WSParams>, Extension(cfg): Extension<Arc<Config>>) -> impl IntoResponse {
     tracing::debug!("language tag {ws:?}");
-    if let Some(query) = params.query {
-        process_query(
-            query, 
-            params.ext.as_deref().unwrap_or("txt"),
-            *params.staging.unwrap_or_default()).await
-    } else if let Some(ws) = ws.get(0) {
-        process_writing_system(
-            ws,
-            params.ext.as_deref().unwrap_or("xml"),
-            *params.flatten.unwrap_or(Toggle::ON),
-            params.inc.as_deref().unwrap_or_default(),
-            params.revid.as_deref().unwrap_or_default(),
-            *params.staging.unwrap_or_default(),
-            params.uid.unwrap_or_default()).await
-    } else {
-        (StatusCode::NOT_FOUND,"")
+    let _ext = params.ext.as_deref().unwrap_or("xml");
+    let flatten = *params.flatten.unwrap_or(Toggle::ON);
+    let _xpath = params.inc.as_deref().unwrap_or_default();
+    let _revid = params.revid.as_deref().unwrap_or_default();
+    let _uid = params.uid.unwrap_or_default();
+
+    let path = find_ldml_file(&ws, &cfg.sldr_path(flatten), &cfg.langtags)
+        .ok_or((StatusCode::NOT_FOUND, format!("No LDML for {ws}")));
+    match path {
+        Ok(path) => stream_file(path.as_ref()).await.into_response(),
+        Err(err) => err.into_response()
     }
 }
 
 
-async fn process_writing_system(_ws: &Tag,
-                                _ext: &str, 
-                                _flatten: bool, 
-                                _inc: &str, 
-                                _revid: &str, 
-                                _staging: bool,
-                                _uid: u32) -> APIResponse 
+fn find_ldml_file(
+    ws: &Tag, 
+    sldr_dir: &path::Path, langtags: 
+    &LangTags) -> Option<path::PathBuf> 
 {
-    todo!()
+    // Lookup the tag set and generate a prefered sorted list.
+    let mut tagset: Vec<_> = langtags.get(ws)?
+        .iter()
+        .collect();
+    tagset.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    tagset.push(ws);
+
+    tagset.iter()
+        .map(|&tag| {
+            let mut path = path::PathBuf::from(sldr_dir);
+            path.push(&tag.lang[0..1]);
+            path.push(tag.to_string().replace("-","_"));
+            path.with_extension("xml")
+        })
+        .rfind(|path| path.exists())
 }
+

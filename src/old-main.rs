@@ -170,15 +170,15 @@ where
 //     query_langtags(ext, staging, cfg)
 // }
 
-#[get("/<langtags>?<staging>", rank=2)]
-fn langtags(langtags: String, staging: Option<Toggle>, cfg: State<APIConfig>) -> Option<SendFile> {
-    let path = cfg.langtags_path(*staging.unwrap_or_default());
-    match langtags.as_str() {
-        "langtags.txt"|"langtags.json" => NamedFile::open(path.join(langtags))
-                                            .map(SendFile).ok(),
-        _ => None                                    
-    }    
-}    
+// #[get("/<langtags>?<staging>", rank=2)]
+// fn langtags(langtags: String, staging: Option<Toggle>, cfg: State<APIConfig>) -> Option<SendFile> {
+//     let path = cfg.langtags_path(*staging.unwrap_or_default());
+//     match langtags.as_str() {
+//         "langtags.txt"|"langtags.json" => NamedFile::open(path.join(langtags))
+//                                             .map(SendFile).ok(),
+//         _ => None                                    
+//     }    
+// }    
 
 #[get("/<ws_id>?query=tags&<staging>", rank=0)]
 fn query_tags(ws_id: Tag, staging: Option<Toggle>, cfg: State<APIConfig>) -> Option<String> {
@@ -216,29 +216,30 @@ fn ldml_query_ws(ws_id: Tag,
 
 #[derive(Responder)]
 enum LDML {
-    Static(ETag<SendFile>),
+    // Static(ETag<SendFile>),
     Dynamic(ETag<Stream<ChannelReader>>)
 }
 
 #[get("/<ws_id>?<ext>&<flatten>&<inc>&<revid>&<staging>&<uid>", rank=1)]
-fn ldml(ws_id: Tag,
+fn ldml(
+        // ws_id: Tag,
         ext: Option<String>,
-        flatten: Option<Toggle>,
+        // flatten: Option<Toggle>,
         inc: Option<String>,
         revid: Option<&RawStr>,
         staging: Option<Toggle>,
         uid: Option<u32>,
-        cfg: State<APIConfig>) -> Result<LDML, status::NotFound<String>>
+        // cfg: State<APIConfig>) -> Result<LDML, status::NotFound<String>>
 {    
-    let sldr_dir = cfg.sldr_path(
-        *staging.unwrap_or_default(), 
-        *flatten.unwrap_or(Toggle::ON));
-    let langtags = cfg.langtags(*staging.unwrap_or_default());
+    // let sldr_dir = cfg.sldr_path(
+    //     *staging.unwrap_or_default(), 
+    //     *flatten.unwrap_or(Toggle::ON));
+    // let langtags = cfg.langtags(*staging.unwrap_or_default());
     let _ext = ext.unwrap_or("xml".into());
-    let not_found_status = || status::NotFound(format!("No LDML for {}\n", ws_id));
+    // let not_found_status = || status::NotFound(format!("No LDML for {}\n", ws_id));
 
-    let ldml_path = find_ldml_file(&ws_id, &sldr_dir, &langtags)
-        .ok_or_else(not_found_status)?;
+    // let ldml_path = find_ldml_file(&ws_id, &sldr_dir, &langtags)
+    //     .ok_or_else(not_found_status)?;
     let etag = revid
         .and(fs::File::open(&ldml_path).ok())
         .and_then(get_revid_from_ldml)
@@ -251,10 +252,10 @@ fn ldml(ws_id: Tag,
             &toplevels);
         Ok(LDML::Dynamic(ETag(Stream::chunked(filtered, 1<<12), etag)))
     } else {
-        Ok(LDML::Static(ETag(
-            SendFile(NamedFile::open(ldml_path)
-                .map_err(|_| not_found_status())?), 
-            etag)))
+        // Ok(LDML::Static(ETag(
+        //     SendFile(NamedFile::open(ldml_path)
+        //         .map_err(|_| not_found_status())?), 
+        //     etag)))
     }
 }
 
@@ -265,22 +266,22 @@ fn ldml(ws_id: Tag,
 //     NamedFile::open("static/index.html").unwrap()
 // }    
 
-fn find_ldml_file(
-        ws_id: &Tag, 
-        sldr_dir: &Path, langtags: 
-        &LangTags) -> Option<PathBuf> {
-    // Lookup the tag set and generate a prefered sorted list.
-    let mut tagset: Vec<_> = langtags.get(&ws_id)?.iter().collect();
-    tagset.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    tagset.push(&ws_id);
-    tagset.iter()
-        .map(|&tag| {
-            let mut path = PathBuf::from(sldr_dir);
-            path.push(&tag.lang[0..1]);
-            path.push(tag.to_string().replace("-","_"));
-            path.with_extension("xml")
-        }).rfind(|path| path.exists())
-}
+// fn find_ldml_file(
+//         ws_id: &Tag, 
+//         sldr_dir: &Path, langtags: 
+//         &LangTags) -> Option<PathBuf> {
+//     // Lookup the tag set and generate a prefered sorted list.
+//     let mut tagset: Vec<_> = langtags.get(&ws_id)?.iter().collect();
+//     tagset.sort_by(|a, b| a.partial_cmp(b).unwrap());
+//     tagset.push(&ws_id);
+//     tagset.iter()
+//         .map(|&tag| {
+//             let mut path = PathBuf::from(sldr_dir);
+//             path.push(&tag.lang[0..1]);
+//             path.push(tag.to_string().replace("-","_"));
+//             path.with_extension("xml")
+//         }).rfind(|path| path.exists())
+// }
 
 fn get_revid_from_ldml<R: io::Read>(reader: R) -> Option<String> {
     use xml::reader::{ EventReader, XmlEvent };
