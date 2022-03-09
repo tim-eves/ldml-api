@@ -3,7 +3,7 @@ use axum::{
     body::StreamBody,
     extract::{ Extension, Query, Path },
     http::{ header, HeaderValue, StatusCode },
-    response::{ Headers, IntoResponse },
+    response::{ Headers, IntoResponse, Redirect },
     routing::{ get },
     Router,
 };
@@ -63,6 +63,7 @@ async fn main() -> io::Result<()> {
     let app = Router::new()
         .route("/langtags.:ext", get(langtags))
         .route("/:ws_id", get(writing_system_endpoint))
+        .route("/", get(query_only))
         .route("/index.html", get(static_help))
         .layer(AddExtensionLayer::new(cfg["staging"].clone()))
         .layer(TraceLayer::new_for_http());
@@ -133,17 +134,25 @@ enum LDMLQuery {
     LangTags,
 }
 
-async fn process_query(query: LDMLQuery, ext: &str, staging: bool) -> APIResponse {
-    match query {
-        LDMLQuery::AllTags => {
+#[derive(Deserialize)]
+struct QueryParams {
+    query: LDMLQuery,
+    ext: Option<String>,
+}
+
+async fn query_only(Query(params): Query<QueryParams>) -> impl IntoResponse {
+    match params.query {
+        LDMLQuery::AllTags => Err(
             (
                 StatusCode::NOT_FOUND, 
                 "LDML SERVER ERROR: The alltags file is obsolete. Please use 'query=langtags'."
             )
-        }
+        ),
         LDMLQuery::LangTags => {
-            tracing::debug!("load {staging:?}/langtags.{ext}");
-            todo!()
+            let ext = params.ext.as_deref().unwrap_or("txt");
+            Ok(Redirect::permanent(format!("/langtags.{ext}")
+                                    .parse()
+                                    .expect("langtags relative path")))
         }
     }
 }
