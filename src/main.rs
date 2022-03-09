@@ -160,7 +160,7 @@ async fn query_only(Query(params): Query<QueryParams>) -> impl IntoResponse {
 
 #[derive(Deserialize)]
 struct WSParams {
-    query: Option<LDMLQuery>,
+    query: Option<String>,
     ext: Option<String>,
     flatten: Option<Toggle>,
     inc: Option<String>,
@@ -170,6 +170,14 @@ struct WSParams {
 
 async fn writing_system_endpoint(Path(ws): Path<Tag>, Query(params): Query<WSParams>, Extension(cfg): Extension<Arc<Config>>) -> impl IntoResponse {
     tracing::debug!("language tag {ws:?}");
+    if let Some("tags") = params.query.as_deref() {
+        let tagset = query_tags(&ws, &cfg.langtags)
+            .ok_or((StatusCode::NOT_FOUND, format!("tag sets for {ws} not found")));
+        return match tagset {
+            Ok(tagset) => tagset.into_response(),
+            Err(err) => err.into_response(),
+        }
+    }
     let _ext = params.ext.as_deref().unwrap_or("xml");
     let flatten = *params.flatten.unwrap_or(Toggle::ON);
     let _xpath = params.inc.as_deref().unwrap_or_default();
@@ -182,6 +190,30 @@ async fn writing_system_endpoint(Path(ws): Path<Tag>, Query(params): Query<WSPar
         Ok(path) => stream_file(path.as_ref()).await.into_response(),
         Err(err) => err.into_response()
     }
+}
+
+
+fn query_tags(ws: &Tag, langtags: &LangTags) -> Option<String> {
+    use std::collections::HashSet;
+    let sets = langtags.iter()
+        .fold(HashSet::<*const TagSet>::new(), |mut s, (k, tagset)| {
+            if ws.lang == k.lang { 
+                s.insert(tagset);
+            }
+            s
+    });
+    if sets.is_empty() {
+        return None;
+    }
+    let mut results: Vec<_> = sets.into_iter().collect();
+    results.sort();
+    Some(results
+        .into_iter()
+        .fold(String::new(), |s, t| { 
+            let tag = unsafe { t.as_ref().unwrap() };
+            s + &tag.to_string() + "\n" 
+        })
+    )
 }
 
 

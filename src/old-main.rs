@@ -180,26 +180,26 @@ where
 //     }    
 // }    
 
-#[get("/<ws_id>?query=tags&<staging>", rank=0)]
-fn query_tags(ws_id: Tag, staging: Option<Toggle>, cfg: State<APIConfig>) -> Option<String> {
-    use std::collections::BinaryHeap;
-    let sets = cfg.langtags(*staging.unwrap_or_default()).iter()
-        .fold(HashSet::<*const TagSet>::new(), |mut s, (k, tagset)| {
-            if ws_id.lang == k.lang && ws_id.region == k.region { 
-                s.insert(Arc::as_ptr(tagset));
-            }
-            s
-    });
-    if sets.is_empty() {
-        return None;
-    }
-    Some(sets.into_iter().collect::<BinaryHeap<_>>().drain_sorted()
-            .fold(String::new(), |s, t| { 
-                let tag = unsafe { t.as_ref().unwrap() };
-                s + &tag.to_string() + "\n" 
-            })
-    )
-}
+// #[get("/<ws_id>?query=tags&<staging>", rank=0)]
+// fn query_tags(ws_id: Tag, staging: Option<Toggle>, cfg: State<APIConfig>) -> Option<String> {
+//     use std::collections::BinaryHeap;
+//     let sets = cfg.langtags(*staging.unwrap_or_default()).iter()
+//         .fold(HashSet::<*const TagSet>::new(), |mut s, (k, tagset)| {
+//             if ws_id.lang == k.lang && ws_id.region == k.region { 
+//                 s.insert(Arc::as_ptr(tagset));
+//             }
+//             s
+//     });
+//     if sets.is_empty() {
+//         return None;
+//     }
+//     Some(sets.into_iter().collect::<BinaryHeap<_>>().drain_sorted()
+//             .fold(String::new(), |s, t| { 
+//                 let tag = unsafe { t.as_ref().unwrap() };
+//                 s + &tag.to_string() + "\n" 
+//             })
+//     )
+// }
 
 #[get("/?<ws_id>&<ext>&<flatten>&<inc>&<revid>&<staging>&<uid>", rank=0)]
 fn ldml_query_ws(ws_id: Tag,
