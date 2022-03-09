@@ -1,18 +1,25 @@
 use crate::langtags::LangTags;
 use std::{
     collections::BTreeMap,
-    path::PathBuf
+    path::PathBuf,
+    sync::Arc,
 };
 
 #[derive(Debug, PartialEq)]
 pub struct Config {
-    sendfile_method: Option<String>,
-    langtags: LangTags,
-    langtags_dir: PathBuf,
-    sldr_dir: PathBuf,
+    pub sendfile_method: Option<String>,
+    pub langtags: LangTags,
+    pub langtags_dir: PathBuf,
+    pub sldr_dir: PathBuf,
 }
 
-pub type Profiles = BTreeMap<String, Config>;
+impl Config {
+    pub fn sldr_path(&self, flat: bool) -> PathBuf {
+        self.sldr_dir.join(if flat { "flat" } else { "unflat" })
+    }
+}
+
+pub type Profiles = BTreeMap<String, Arc<Config>>;
 
 pub mod profiles {
     use crate::langtags::LangTags;
@@ -20,7 +27,8 @@ pub mod profiles {
     use std::{
         fs::File,
         io::{ self, Read },
-        path::{ Path, PathBuf }
+        path::{ Path, PathBuf },
+        sync::Arc,
     };
     use super::{ Profiles, Config};
 
@@ -38,7 +46,7 @@ pub mod profiles {
         io::Error::new(io::ErrorKind::InvalidData, format!("parse failed: {msg}"))
     }
 
-    pub fn from_reader<R: Read>(mut reader: R) -> io::Result<Profiles> 
+    pub fn from_reader<R: Read>(reader: R) -> io::Result<Profiles> 
     {
         let cfg: Value = serde_json::from_reader(reader)?;
 
@@ -71,12 +79,12 @@ pub mod profiles {
             let langtags = File::open(langtags_dir.join("langtags.txt"))
                 .and_then(LangTags::from_reader)?;
 
-            configs.insert(name.to_owned(), Config {
+            configs.insert(name.to_owned(), Arc::new(Config {
                 sendfile_method,
                 langtags,
                 langtags_dir,
                 sldr_dir
-            });
+            }));
         }
         
         Ok(configs)
@@ -85,9 +93,8 @@ pub mod profiles {
 
 #[cfg(test)]
 mod tests {
-    use std::fs::File;
     use crate::langtags::LangTags;
-    use super::{Config, Profiles, profiles};
+    use super::{Arc, Config, Profiles, profiles};
 
     #[test]
     fn missing_config() {
@@ -133,24 +140,27 @@ mod tests {
                          "sldr": "/data/sldr/"
                      }
                  }"#[..]).ok().unwrap();
-        let expected_langtags = LangTags::from_reader(
-            &br#"*aa = *aa-ET = aa-Latn = aa-Latn-ET
-                 aa-Arab = aa-Arab-ET"#[..]).unwrap();
         let mut expected = Profiles::new();
-        expected.insert("production".to_owned(),
+        expected.insert("production".into(), Arc::new(
                         Config {
                             sendfile_method: Some("X-Accel-Redirect".into()),
-                            langtags: expected_langtags.clone(),
+                            langtags: LangTags::from_reader(
+                                &br#"*aa = *aa-ET = aa-Latn = aa-Latn-ET
+                                     aa-Arab = aa-Arab-ET"#[..])
+                                .expect("test production langtags"),
                             langtags_dir: "test/".into(),
                             sldr_dir: "/data/sldr/".into()
-                        });
-        expected.insert("staging".to_owned(),
+                        }));
+        expected.insert("staging".into(), Arc::new(
                         Config {
                             sendfile_method: None,
-                            langtags: expected_langtags,
+                            langtags: LangTags::from_reader(
+                                &br#"*aa = *aa-ET = aa-Latn = aa-Latn-ET
+                                     aa-Arab = aa-Arab-ET"#[..])
+                                .expect("test staging langtags"),
                             langtags_dir: "test/".into(),
                             sldr_dir: "/staging/data/sldr/".into()
-                        });
+                        }));
 
         assert_eq!(res, expected);
     }

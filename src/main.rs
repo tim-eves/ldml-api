@@ -1,5 +1,6 @@
 use axum::{
-    extract::{ Query, Path },
+    AddExtensionLayer,
+    extract::{ Extension, Query, Path },
     http::StatusCode,
     response::{ IntoResponse },
     routing::{ get, get_service },
@@ -8,7 +9,7 @@ use axum::{
 use serde::Deserialize;
 use std::{
     fmt::Display,
-    io
+    io,
 };
 use tower_http::{
     services::ServeFile,
@@ -50,7 +51,7 @@ async fn main() -> io::Result<()> {
     
     // Load configuraion
     let cfg = config::profiles::default()?;
-    tracing::debug!("loaded profiles {:?}", cfg.keys().collect::<Vec<_>>());
+    tracing::debug!("loaded profiles: {profiles:?}", profiles = cfg.keys().collect::<Vec<_>>());
 
     // build our application with a single route
     let static_help = get_service(ServeFile::new("static/index.html"))
@@ -58,9 +59,9 @@ async fn main() -> io::Result<()> {
     let app = Router::new()
         .route("/index.html", static_help)
         .route("/:ws_id", get(writing_system_endpoint))
-        .route("/", get(writing_system_endpoint))
+        .layer(AddExtensionLayer::new(cfg["staging"].clone()))
         .layer(TraceLayer::new_for_http());
-        
+
         // run it with hyper on localhost:3000
         let addr = "127.0.0.1:3000".parse().unwrap();
         tracing::debug!("listening on {addr}");
