@@ -207,7 +207,7 @@ fn ldml_query_ws(ws_id: Tag,
                  flatten: Option<Toggle>,
                  inc: Option<String>,
                  revid: Option<&RawStr>,
-                 staging: Option<Toggle>,
+                //  staging: Option<Toggle>,
                  uid: Option<u32>,
                  cfg: State<APIConfig>) -> Result<LDML, status::NotFound<String>> 
 {
@@ -227,7 +227,7 @@ fn ldml(
         // flatten: Option<Toggle>,
         inc: Option<String>,
         revid: Option<&RawStr>,
-        staging: Option<Toggle>,
+        // staging: Option<Toggle>,
         uid: Option<u32>,
         // cfg: State<APIConfig>) -> Result<LDML, status::NotFound<String>>
 {    

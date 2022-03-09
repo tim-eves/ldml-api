@@ -32,11 +32,11 @@ pub mod profiles {
     };
     use super::{ Profiles, Config};
 
-    pub fn default() -> io::Result<Profiles> {
+    pub fn default() -> io::Result<Arc<Profiles>> {
         from("ldml-api.json")
     }
 
-    pub fn from<P>(path: P) -> io::Result<Profiles> 
+    pub fn from<P>(path: P) -> io::Result<Arc<Profiles>> 
         where P: AsRef<Path>
     {
         from_reader(File::open(path)?)
@@ -46,7 +46,7 @@ pub mod profiles {
         io::Error::new(io::ErrorKind::InvalidData, format!("parse failed: {msg}"))
     }
 
-    pub fn from_reader<R: Read>(reader: R) -> io::Result<Profiles> 
+    pub fn from_reader<R: Read>(reader: R) -> io::Result<Arc<Profiles>> 
     {
         let cfg: Value = serde_json::from_reader(reader)?;
 
@@ -87,7 +87,7 @@ pub mod profiles {
             }));
         }
         
-        Ok(configs)
+        Ok(Arc::new(configs))
     }
 }
 
@@ -162,6 +162,6 @@ mod tests {
                             sldr_dir: "/staging/data/sldr/".into()
                         }));
 
-        assert_eq!(res, expected);
+        assert_eq!(*res, expected);
     }
 }

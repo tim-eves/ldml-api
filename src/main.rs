@@ -1,14 +1,15 @@
 use axum::{
-    AddExtensionLayer,
     body::StreamBody,
     extract::{ Extension, Query, Path },
-    http::{ header, HeaderValue, StatusCode },
+    http::{ header, HeaderValue, Request, StatusCode },
+    middleware::{ self, Next },
     response::{ Headers, IntoResponse, Redirect },
     routing::{ get },
     Router,
 };
 use serde::Deserialize;
 use std::{
+    collections::HashMap,
     io,
     path,
     sync::Arc,
@@ -38,7 +39,7 @@ mod langtags;
 
 use crate::tag::Tag;
 use crate::langtags::{ LangTags, TagSet };
-use crate::config::Config;
+use crate::config::{ Config, Profiles };
 use crate::toggle::Toggle;
 
 
@@ -55,7 +56,7 @@ async fn main() -> io::Result<()> {
     
     // Load configuraion
     let cfg = config::profiles::default()?;
-    tracing::debug!("loaded profiles: {profiles:?}", profiles = cfg.keys().collect::<Vec<_>>());
+    tracing::info!("loaded profiles: {profiles:?}", profiles = cfg.keys().collect::<Vec<_>>());
 
     async fn static_help() -> &'static str {
         include_str!("index.html")
@@ -65,17 +66,29 @@ async fn main() -> io::Result<()> {
         .route("/:ws_id", get(writing_system_endpoint))
         .route("/", get(query_only))
         .route("/index.html", get(static_help))
-        .layer(AddExtensionLayer::new(cfg["staging"].clone()))
+        .layer(middleware::from_fn(move |req, next| profile_selector(req, next, cfg.clone())))
         .layer(TraceLayer::new_for_http());
 
         // run it with hyper on localhost:3000
         let addr = "127.0.0.1:3000".parse().unwrap();
-        tracing::debug!("listening on {addr}");
+        tracing::info!("listening on {addr}");
         axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
     Ok(())
+}
+
+async fn profile_selector<B>(mut req: Request<B>, next: Next<B>, cfg: Arc<Profiles>) -> impl IntoResponse {
+    let staging = req.uri()
+        .query()
+        .and_then(|q| serde_urlencoded::from_str::<HashMap<String,Toggle>>(q).ok())
+        .and_then(|qs| qs.get("staging").map(|t| **t))
+        .unwrap_or(false);
+    let profile = if staging {"staging"} else {"production"};
+    tracing::debug!("using profile: {profile}");
+    req.extensions_mut().insert(cfg[profile].clone());
+    next.run(req).await
 }
 
 
