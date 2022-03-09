@@ -65,8 +65,8 @@ impl Tag {
 impl Display for Tag {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.write_str(&self.lang)?;
-        if let Some(script) = &self.script { write!(f, "-{}", &script)?; }
-        if let Some(region) = &self.region { write!(f, "-{}", &region)?; }
+        if let Some(script) = &self.script { write!(f, "-{script}")?; }
+        if let Some(region) = &self.region { write!(f, "-{region}")?; }
         if !self.variant.is_empty() {
             write!(f, "-{}", &self.variant.join("-"))?; 
         }

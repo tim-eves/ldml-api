@@ -36,6 +36,53 @@ mod langtags;
 use crate::tag::Tag;
 use crate::toggle::Toggle;
 
+
+#[tokio::main]
+async fn main() -> io::Result<()> {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var_os("RUST_LOG").is_none() {
+        std::env::set_var(
+            "RUST_LOG",
+            "ldml_api=debug,tower_http=debug",
+        )
+    }
+    tracing_subscriber::fmt::init();
+    
+    // Load configuraion
+    let cfg = config::profiles::default()?;
+    tracing::debug!("loaded profiles {:?}", cfg.keys().collect::<Vec<_>>());
+
+    // build our application with a single route
+    let static_help = get_service(ServeFile::new("static/index.html"))
+                        .handle_error(internal_error);
+    let app = Router::new()
+        .route("/index.html", static_help)
+        .route("/:ws_id", get(writing_system_endpoint))
+        .route("/", get(writing_system_endpoint))
+        .layer(TraceLayer::new_for_http());
+        
+        // run it with hyper on localhost:3000
+        let addr = "127.0.0.1:3000".parse().unwrap();
+        tracing::debug!("listening on {addr}");
+        axum::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
+    Ok(())
+}
+
+
+async fn internal_error(error: impl Display) -> impl IntoResponse {
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        format!("Unhandled internal error: {error}")
+    )
+}
+
+
+type APIResponse = (StatusCode, &'static str);
+
+
 #[derive(Deserialize)]
 #[serde(rename_all = "lowercase")]
 enum LDMLQuery {
@@ -57,9 +104,6 @@ async fn process_query(query: LDMLQuery, ext: &str, staging: bool) -> APIRespons
         }
     }
 }
-
-
-type APIResponse = (StatusCode, &'static str);
 
 
 #[derive(Deserialize)]
@@ -104,47 +148,4 @@ async fn process_writing_system(_ws: &Tag,
                                 _uid: u32) -> APIResponse 
 {
     todo!()
-}
-
-
-async fn internal_error(error: impl Display) -> impl IntoResponse {
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        format!("Unhandled internal error: {error}")
-    )
-}
-
-
-#[tokio::main]
-async fn main() -> io::Result<()> {
-    // Set the RUST_LOG, if it hasn't been explicitly defined
-    if std::env::var_os("RUST_LOG").is_none() {
-        std::env::set_var(
-            "RUST_LOG",
-            "ldml_api=debug,tower_http=debug",
-        )
-    }
-    tracing_subscriber::fmt::init();
-    
-    // Load configuraion
-    let cfg = config::profiles::default()?;
-    tracing::debug!("loaded profiles {:?}", cfg.keys().collect::<Vec<_>>());
-
-    // build our application with a single route
-    let static_help = get_service(ServeFile::new("static/index.html"))
-                        .handle_error(internal_error);
-    let app = Router::new()
-        .route("/index.html", static_help)
-        .route("/:ws_id", get(writing_system_endpoint))
-        .route("/", get(writing_system_endpoint))
-        .layer(TraceLayer::new_for_http());
-        
-        // run it with hyper on localhost:3000
-        let addr = "127.0.0.1:3000".parse().unwrap();
-        tracing::debug!("listening on {addr}");
-        axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
-    Ok(())
 }
