@@ -53,12 +53,12 @@ async fn main() -> io::Result<()> {
     let cfg = config::profiles::default()?;
     tracing::debug!("loaded profiles: {profiles:?}", profiles = cfg.keys().collect::<Vec<_>>());
 
-    // build our application with a single route
-    let static_help = get_service(ServeFile::new("static/index.html"))
-                        .handle_error(internal_error);
+    async fn static_help() -> &'static str {
+        include_str!("index.html")
+    }
     let app = Router::new()
-        .route("/index.html", static_help)
         .route("/:ws_id", get(writing_system_endpoint))
+        .route("/index.html", get(static_help))
         .layer(AddExtensionLayer::new(cfg["staging"].clone()))
         .layer(TraceLayer::new_for_http());
 
@@ -72,13 +72,6 @@ async fn main() -> io::Result<()> {
     Ok(())
 }
 
-
-async fn internal_error(error: impl Display) -> impl IntoResponse {
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        format!("Unhandled internal error: {error}")
-    )
-}
 
 
 type APIResponse = (StatusCode, &'static str);
