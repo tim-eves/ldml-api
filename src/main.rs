@@ -204,26 +204,27 @@ async fn writing_system_endpoint(
 }
 
 fn query_tags(ws: &Tag, langtags: &LangTags) -> Option<String> {
-    use std::collections::HashSet;
-    let sets = langtags.iter()
-        .fold(HashSet::<*const TagSet>::new(), |mut s, (k, tagset)| {
-            if ws.lang == k.lang { 
-                s.insert(tagset);
+    let predicate: Box<dyn Fn(&Tag) -> bool> = match ws {
+        Tag {
+            script: None,
+            region: Some(_),
+            ..
+        } => Box::new(|t| t.lang == ws.lang && t.region == ws.region),
+        Tag {
+            script: Some(_), ..
+        } => Box::new(|t| t.lang == ws.lang && t.script == ws.script),
+        _ => Box::new(|t| t.lang == ws.lang),
+    };
+    langtags
+        .tagsets()
+        .filter_map(|ts| {
+            if ts.iter().any(&predicate) {
+                Some(ts.to_string() + "\n")
+            } else {
+                None
             }
-            s
-    });
-    if sets.is_empty() {
-        return None;
-    }
-    let mut results: Vec<_> = sets.into_iter().collect();
-    results.sort();
-    Some(results
-        .into_iter()
-        .fold(String::new(), |s, t| { 
-            let tag = unsafe { t.as_ref().unwrap() };
-            s + &tag.to_string() + "\n" 
         })
-    )
+        .reduce(|accum, item| accum + &item)
 }
 
 fn find_ldml_file(ws: &Tag, sldr_dir: &path::Path, langtags: &LangTags) -> Option<path::PathBuf> {
