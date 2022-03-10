@@ -1,8 +1,5 @@
 use serde_with::DeserializeFromStr;
-use std::{
-    ops::Deref,
-    str::FromStr,
-};
+use std::{ops::Deref, str::FromStr};
 
 #[derive(Debug, Clone, Copy, Default, DeserializeFromStr, Eq, PartialEq)]
 pub struct Toggle(bool);
@@ -14,20 +11,21 @@ impl Toggle {
 
 impl Deref for Toggle {
     type Target = bool;
-    fn deref(&self) -> &Self::Target { &self.0 }
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 impl FromStr for Toggle {
     type Err = core::convert::Infallible;
-    
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
-            ""|"0"|"no"|"false"|"off" => Toggle::OFF, 
-            _ => Toggle::ON
-        })  
-    }    
-}    
-
+            "" | "0" | "no" | "false" | "off" => Toggle::OFF,
+            _ => Toggle::ON,
+        })
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -47,7 +45,7 @@ mod tests {
         assert_eq!("0".parse::<Toggle>(), Ok(Toggle::OFF));
         assert_eq!("no".parse::<Toggle>(), Ok(Toggle::OFF));
         assert_eq!("false".parse::<Toggle>(), Ok(Toggle::OFF));
-        assert_eq!("off".parse::<Toggle>(), Ok(Toggle::OFF));        
+        assert_eq!("off".parse::<Toggle>(), Ok(Toggle::OFF));
     }
 
     #[test]

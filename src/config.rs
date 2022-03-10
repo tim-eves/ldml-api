@@ -1,9 +1,5 @@
 use crate::langtags::LangTags;
-use std::{
-    collections::BTreeMap,
-    path::PathBuf,
-    sync::Arc,
-};
+use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
 
 #[derive(Debug, PartialEq)]
 pub struct Config {
@@ -22,22 +18,23 @@ impl Config {
 pub type Profiles = BTreeMap<String, Arc<Config>>;
 
 pub mod profiles {
+    use super::{Config, Profiles};
     use crate::langtags::LangTags;
-    use serde_json::{ Value };
+    use serde_json::Value;
     use std::{
         fs::File,
-        io::{ self, Read },
-        path::{ Path, PathBuf },
+        io::{self, Read},
+        path::{Path, PathBuf},
         sync::Arc,
     };
-    use super::{ Profiles, Config};
 
     pub fn default() -> io::Result<Arc<Profiles>> {
         from("ldml-api.json")
     }
 
-    pub fn from<P>(path: P) -> io::Result<Arc<Profiles>> 
-        where P: AsRef<Path>
+    pub fn from<P>(path: P) -> io::Result<Arc<Profiles>>
+    where
+        P: AsRef<Path>,
     {
         from_reader(File::open(path)?)
     }
@@ -46,11 +43,11 @@ pub mod profiles {
         io::Error::new(io::ErrorKind::InvalidData, format!("parse failed: {msg}"))
     }
 
-    pub fn from_reader<R: Read>(reader: R) -> io::Result<Arc<Profiles>> 
-    {
+    pub fn from_reader<R: Read>(reader: R) -> io::Result<Arc<Profiles>> {
         let cfg: Value = serde_json::from_reader(reader)?;
 
-        let profiles = cfg.as_object()
+        let profiles = cfg
+            .as_object()
             .ok_or_else(|| into_parse_error("profile map"))?;
         let mut configs = Profiles::new();
         // Read defined profiles
@@ -60,41 +57,45 @@ pub mod profiles {
             let mut sldr_dir = Default::default();
 
             v.as_object()
-            .ok_or_else(|| into_parse_error("config object"))
-            .and_then(|tbl| {
-                sendfile_method = tbl.get("sendfile_method")
-                    .and_then(Value::as_str)
-                    .map(str::to_string);
-                sldr_dir = tbl["sldr"]
-                    .as_str()
-                    .map(PathBuf::from)
-                    .ok_or_else(|| into_parse_error("sldr path"))?;
-                langtags_dir = tbl["langtags"]
-                    .as_str()
-                    .map(PathBuf::from)
-                    .ok_or_else(|| into_parse_error("sldr path"))?;
-                Ok(())
-            })?;
+                .ok_or_else(|| into_parse_error("config object"))
+                .and_then(|tbl| {
+                    sendfile_method = tbl
+                        .get("sendfile_method")
+                        .and_then(Value::as_str)
+                        .map(str::to_string);
+                    sldr_dir = tbl["sldr"]
+                        .as_str()
+                        .map(PathBuf::from)
+                        .ok_or_else(|| into_parse_error("sldr path"))?;
+                    langtags_dir = tbl["langtags"]
+                        .as_str()
+                        .map(PathBuf::from)
+                        .ok_or_else(|| into_parse_error("sldr path"))?;
+                    Ok(())
+                })?;
 
-            let langtags = File::open(langtags_dir.join("langtags.txt"))
-                .and_then(LangTags::from_reader)?;
+            let langtags =
+                File::open(langtags_dir.join("langtags.txt")).and_then(LangTags::from_reader)?;
 
-            configs.insert(name.to_owned(), Arc::new(Config {
-                sendfile_method,
-                langtags,
-                langtags_dir,
-                sldr_dir
-            }));
+            configs.insert(
+                name.to_owned(),
+                Arc::new(Config {
+                    sendfile_method,
+                    langtags,
+                    langtags_dir,
+                    sldr_dir,
+                }),
+            );
         }
-        
+
         Ok(Arc::new(configs))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::{profiles, Arc, Config, Profiles};
     use crate::langtags::LangTags;
-    use super::{Arc, Config, Profiles, profiles};
 
     #[test]
     fn missing_config() {
@@ -104,7 +105,9 @@ mod tests {
 
     #[test]
     fn unreadable_config() {
-        let res = profiles::from_reader(&br"hang this isn't JSON!"[..]).err().unwrap();
+        let res = profiles::from_reader(&br"hang this isn't JSON!"[..])
+            .err()
+            .unwrap();
         assert_eq!(res.kind(), std::io::ErrorKind::InvalidData);
         assert_eq!(res.to_string(), "expected value at line 1 column 1");
     }
@@ -122,7 +125,10 @@ mod tests {
                         "langtags": "/data/",
                         "sldr": "/data/sldr/"
                     }
-                 }"#[..]).err().unwrap();
+                 }"#[..],
+        )
+        .err()
+        .unwrap();
         assert_eq!(res.kind(), std::io::ErrorKind::NotFound);
     }
 
@@ -139,28 +145,37 @@ mod tests {
                          "langtags": "test/",
                          "sldr": "/data/sldr/"
                      }
-                 }"#[..]).ok().unwrap();
+                 }"#[..],
+        )
+        .ok()
+        .unwrap();
         let mut expected = Profiles::new();
-        expected.insert("production".into(), Arc::new(
-                        Config {
-                            sendfile_method: Some("X-Accel-Redirect".into()),
-                            langtags: LangTags::from_reader(
-                                &br#"*aa = *aa-ET = aa-Latn = aa-Latn-ET
-                                     aa-Arab = aa-Arab-ET"#[..])
-                                .expect("test production langtags"),
-                            langtags_dir: "test/".into(),
-                            sldr_dir: "/data/sldr/".into()
-                        }));
-        expected.insert("staging".into(), Arc::new(
-                        Config {
-                            sendfile_method: None,
-                            langtags: LangTags::from_reader(
-                                &br#"*aa = *aa-ET = aa-Latn = aa-Latn-ET
-                                     aa-Arab = aa-Arab-ET"#[..])
-                                .expect("test staging langtags"),
-                            langtags_dir: "test/".into(),
-                            sldr_dir: "/staging/data/sldr/".into()
-                        }));
+        expected.insert(
+            "production".into(),
+            Arc::new(Config {
+                sendfile_method: Some("X-Accel-Redirect".into()),
+                langtags: LangTags::from_reader(
+                    &br#"*aa = *aa-ET = aa-Latn = aa-Latn-ET
+                                     aa-Arab = aa-Arab-ET"#[..],
+                )
+                .expect("test production langtags"),
+                langtags_dir: "test/".into(),
+                sldr_dir: "/data/sldr/".into(),
+            }),
+        );
+        expected.insert(
+            "staging".into(),
+            Arc::new(Config {
+                sendfile_method: None,
+                langtags: LangTags::from_reader(
+                    &br#"*aa = *aa-ET = aa-Latn = aa-Latn-ET
+                                     aa-Arab = aa-Arab-ET"#[..],
+                )
+                .expect("test staging langtags"),
+                langtags_dir: "test/".into(),
+                sldr_dir: "/staging/data/sldr/".into(),
+            }),
+        );
 
         assert_eq!(*res, expected);
     }
