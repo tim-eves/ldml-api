@@ -31,16 +31,32 @@ impl LangTags {
         let mut buf = String::new();
         reader.read_to_string(&mut buf)?;
 
-        let mut langtags = LangTags { 
-            tagsets: Default::default(), 
-            map: Default::default()
-        };
-        for parses in buf.lines().filter(|l| !l.trim().is_empty()).map(|l| l.split('=').map(parse)) {
-            let tagset = TagSet(parses.collect::<Result<HashSet<Tag>, _>>()
-                .map_err(into_io_error)?);
-            langtags.add_tagset(tagset);
-        }
-        Ok(langtags)
+        let tagsets = buf
+            .lines()
+            .filter_map(|l| {
+                if l.trim().is_empty() {
+                    None
+                } else {
+                    Some(
+                        l.split('=')
+                            .map(parse)
+                            .collect::<Result<HashSet<Tag>, _>>()
+                            .map(TagSet),
+                    )
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(into_io_error)?;
+
+        let map: HashMap<Tag, TagSetRef> =
+            tagsets
+                .iter()
+                .enumerate()
+                .fold(Default::default(), |mut m, (i, ts)| {
+                    m.extend(ts.iter().cloned().map(|t| (t, i as TagSetRef)));
+                    m
+                });
+        Ok(LangTags { tagsets, map })
     }
 
     pub fn get(&self, k: &Tag) -> Option<&TagSet> {
@@ -54,10 +70,8 @@ impl LangTags {
         }
     }
 
-    fn add_tagset(&mut self, ts: TagSet) {
-        let i = self.tagsets.len() as TagSetRef;
-        self.map.extend(ts.iter().cloned().map(|t| (t, i)));
-        self.tagsets.push(ts);
+    pub fn tagsets(&self) -> impl Iterator<Item = &TagSet> + '_ {
+        self.tagsets.iter()
     }
 }
 
