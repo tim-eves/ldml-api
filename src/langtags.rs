@@ -5,7 +5,7 @@ use std::{
     io::{ self, Read },
     ops::{ Index, Deref, DerefMut },
 };
-use crate::tag::Tag;
+use language_tag::Tag;
 
 #[derive(Clone,Debug,Eq,PartialEq)]
 pub struct TagSet(HashSet<Tag>);
@@ -108,7 +108,7 @@ mod tests {
         io,
         iter::FromIterator,
      };
-    use crate::tag::Tag;
+    use language_tag::Tag;
     use super::{ LangTags, TagSet };
 
     #[test]

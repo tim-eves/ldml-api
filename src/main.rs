@@ -7,6 +7,7 @@ use axum::{
     routing::{ get },
     Router,
 };
+use language_tag::Tag;
 use serde::Deserialize;
 use std::{
     collections::HashMap,
@@ -20,7 +21,6 @@ use tower_http::{
 };
 
 mod config;
-mod tag;
 mod toggle;
 mod langtags;
 
@@ -37,7 +37,6 @@ mod langtags;
 /?ws_id=<ws_id>                         => /<ws_id> [Accept:application/x.vnd.sil.ldml.v2+xml]
 */
 
-use crate::tag::Tag;
 use crate::langtags::{ LangTags, TagSet };
 use crate::config::{ Config, Profiles };
 use crate::toggle::Toggle;

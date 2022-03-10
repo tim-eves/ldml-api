@@ -1,0 +1,15 @@
+[package]
+name = "language-tag"
+description = "Language Tags"
+keywords = ["langtag", "web", "language", "metadat"]
+license = "GPLv3"
+readme = "README.md"
+version = "0.0.1"
+authors = ["Tim Eves <tim_eves@sil.org>"]
+edition = "2018"
+
+[lib]
+
+[dependencies]
+nom = "5"
+serde_with = { version = "1.12" }
