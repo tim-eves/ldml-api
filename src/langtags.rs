@@ -152,7 +152,7 @@ mod tests {
             aa-Arab = aa-Arab-ET"#[..],
         )
         .ok()
-        .unwrap();
+        .expect("LangTags test case.");
 
         let tagsets = vec![
             TagSet(HashSet::from_iter([
@@ -186,7 +186,7 @@ mod tests {
             aa-Arab = aa-Arab-ET"#[..],
         )
         .ok()
-        .unwrap()
+        .expect("LangTags test case.")
         ._iter()
         .map(|(k, v)| format!("{k}: {v}"))
         .collect();

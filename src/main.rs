@@ -63,7 +63,7 @@ async fn main() -> io::Result<()> {
         .layer(TraceLayer::new_for_http());
 
     // run it with hyper on localhost:3000
-    let addr = "127.0.0.1:3000".parse().unwrap();
+    let addr = "127.0.0.1:3000".parse().expect("localhost listening address");
     tracing::info!("listening on {addr}");
     axum::Server::bind(&addr)
         .serve(app.into_make_service())

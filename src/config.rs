@@ -100,14 +100,19 @@ mod tests {
     #[test]
     fn missing_config() {
         let res = profiles::from("test/missing-config.json");
-        assert_eq!(res.err().unwrap().kind(), std::io::ErrorKind::NotFound);
+        assert_eq!(
+            res.err()
+                .expect("io::Error: Not found.")
+                .kind(), 
+            std::io::ErrorKind::NotFound
+        );
     }
 
     #[test]
     fn unreadable_config() {
         let res = profiles::from_reader(&br"hang this isn't JSON!"[..])
             .err()
-            .unwrap();
+            .expect("io::Error: Invlalid data.");
         assert_eq!(res.kind(), std::io::ErrorKind::InvalidData);
         assert_eq!(res.to_string(), "expected value at line 1 column 1");
     }
@@ -128,7 +133,7 @@ mod tests {
                  }"#[..],
         )
         .err()
-        .unwrap();
+        .expect("io:Error: Not found during profiles::from_reader.");
         assert_eq!(res.kind(), std::io::ErrorKind::NotFound);
     }
 
@@ -148,7 +153,7 @@ mod tests {
                  }"#[..],
         )
         .ok()
-        .unwrap();
+        .expect("Profiles value.");
         let mut expected = Profiles::new();
         expected.insert(
             "production".into(),
