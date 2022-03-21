@@ -3,7 +3,7 @@ use axum::{
     extract::{Extension, Path, Query},
     http::{header, HeaderValue, Request, StatusCode},
     middleware::{self, Next},
-    response::{Headers, IntoResponse, Redirect},
+    response::{Headers, Html, IntoResponse, Redirect},
     routing::get,
     Router,
 };
@@ -49,8 +49,8 @@ async fn main() -> io::Result<()> {
         profiles = cfg.keys().collect::<Vec<_>>()
     );
 
-    async fn static_help() -> &'static str {
-        include_str!("index.html")
+    async fn static_help() -> Html<&'static str> {
+        Html(include_str!("index.html"))
     }
     let app = Router::new()
         .route("/langtags.:ext", get(langtags))
@@ -230,7 +230,7 @@ fn query_tags(ws: &Tag, langtags: &LangTags) -> Option<String> {
 fn find_ldml_file(ws: &Tag, sldr_dir: &path::Path, langtags: &LangTags) -> Option<path::PathBuf> {
     // Lookup the tag set and generate a prefered sorted list.
     let mut tagset: Vec<_> = langtags.get(ws)?.iter().collect();
-    tagset.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    tagset.sort();
     tagset.push(ws);
 
     tagset
