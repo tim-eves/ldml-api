@@ -28,10 +28,6 @@ pub mod profiles {
         sync::Arc,
     };
 
-    pub fn default() -> io::Result<Arc<Profiles>> {
-        from("ldml-api.json")
-    }
-
     pub fn from<P>(path: P) -> io::Result<Arc<Profiles>>
     where
         P: AsRef<Path>,
@@ -101,9 +97,7 @@ mod tests {
     fn missing_config() {
         let res = profiles::from("test/missing-config.json");
         assert_eq!(
-            res.err()
-                .expect("io::Error: Not found.")
-                .kind(), 
+            res.err().expect("io::Error: Not found.").kind(),
             std::io::ErrorKind::NotFound
         );
     }

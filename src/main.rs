@@ -7,9 +7,10 @@ use axum::{
     routing::get,
     Router,
 };
+use clap::Parser;
 use language_tag::Tag;
 use serde::Deserialize;
-use std::{collections::HashMap, io, path, sync::Arc};
+use std::{collections::HashMap, io, net::SocketAddr, path, sync::Arc};
 use tokio::fs;
 use tower_http::trace::TraceLayer;
 
@@ -34,6 +35,21 @@ use crate::config::{Config, Profiles};
 use crate::langtags::LangTags;
 use crate::toggle::Toggle;
 
+#[derive(Debug, Parser)]
+#[clap(author, version, about)]
+struct Args {
+    #[clap(long, default_value = "./ldml-api.json")]
+    /// Path to config file
+    config: path::PathBuf,
+
+    #[clap(long, default_value = "production")]
+    /// Default profile to use when staging argument not set in a request
+    profile: String,
+
+    #[clap(short, long, default_value = "0.0.0.0:3000")]
+    listen: SocketAddr,
+}
+
 #[tokio::main]
 async fn main() -> io::Result<()> {
     // Set the RUST_LOG, if it hasn't been explicitly defined
@@ -42,8 +58,11 @@ async fn main() -> io::Result<()> {
     }
     tracing_subscriber::fmt::init();
 
+    let args = Args::parse();
+    let default_profile = Arc::new(args.profile);
+
     // Load configuraion
-    let cfg = config::profiles::default()?;
+    let cfg = config::profiles::from(args.config)?;
     tracing::info!(
         "loaded profiles: {profiles:?}",
         profiles = cfg.keys().collect::<Vec<_>>()
@@ -58,14 +77,14 @@ async fn main() -> io::Result<()> {
         .route("/", get(query_only))
         .route("/index.html", get(static_help))
         .layer(middleware::from_fn(move |req, next| {
-            profile_selector(req, next, cfg.clone())
+            profile_selector(req, next, cfg.clone(), default_profile.clone())
         }))
         .layer(TraceLayer::new_for_http());
 
     // run it with hyper on localhost:3000
-    let addr = "127.0.0.1:3000".parse().expect("localhost listening address");
-    tracing::info!("listening on {addr}");
-    axum::Server::bind(&addr)
+    // let addr = "0.0.0.0:3000".parse().expect("localhost listening address");
+    tracing::info!("listening on {addr}", addr = args.listen);
+    axum::Server::bind(&args.listen)
         .serve(app.into_make_service())
         .await
         .unwrap();
@@ -76,6 +95,7 @@ async fn profile_selector<B>(
     mut req: Request<B>,
     next: Next<B>,
     cfg: Arc<Profiles>,
+    default_profile: Arc<String>,
 ) -> impl IntoResponse {
     let staging = req
         .uri()
@@ -83,7 +103,11 @@ async fn profile_selector<B>(
         .and_then(|q| serde_urlencoded::from_str::<HashMap<String, Toggle>>(q).ok())
         .and_then(|qs| qs.get("staging").map(|t| **t))
         .unwrap_or(false);
-    let profile = if staging { "staging" } else { "production" };
+    let profile = if staging {
+        "staging"
+    } else {
+        default_profile.as_str()
+    };
     tracing::debug!("using profile: {profile}");
     req.extensions_mut().insert(cfg[profile].clone());
     next.run(req).await
