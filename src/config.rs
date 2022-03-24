@@ -23,7 +23,7 @@ pub mod profiles {
     use serde_json::Value;
     use std::{
         fs::File,
-        io::{self, Read},
+        io::{self, BufReader, Read},
         path::{Path, PathBuf},
         sync::Arc,
     };
@@ -70,8 +70,8 @@ pub mod profiles {
                     Ok(())
                 })?;
 
-            let langtags =
-                File::open(langtags_dir.join("langtags.txt")).and_then(LangTags::from_reader)?;
+            let reader = BufReader::new(File::open(langtags_dir.join("langtags.txt"))?);
+            let langtags = LangTags::from_reader(reader)?;
 
             configs.insert(
                 name.to_owned(),

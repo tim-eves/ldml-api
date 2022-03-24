@@ -3,7 +3,7 @@ use std::{
     collections::{hash_map, HashMap, HashSet},
     error::Error,
     fmt::Display,
-    io::{self, Read},
+    io::{self, BufRead},
     ops::{Deref, DerefMut, Index},
 };
 
@@ -19,7 +19,7 @@ pub struct LangTags {
 }
 
 impl LangTags {
-    pub fn from_reader<R: Read>(mut reader: R) -> io::Result<Self> {
+    pub fn from_reader<R: BufRead>(reader: R) -> io::Result<Self> {
         fn into_io_error<E>(error: E) -> io::Error
         where
             E: Into<Box<dyn Error + Send + Sync>>,
@@ -28,10 +28,7 @@ impl LangTags {
         }
 
         let parse = |s: &str| s.trim().trim_start_matches('*').parse::<Tag>();
-        let mut buf = String::new();
-        reader.read_to_string(&mut buf)?;
-
-        let tagsets = buf
+        let tagsets = reader
             .lines()
             .filter_map(|l| {
                 if l.trim().is_empty() {
