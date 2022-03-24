@@ -113,27 +113,30 @@ async fn profile_selector<B>(
     next.run(req).await
 }
 
-async fn stream_file(path: &path::Path) -> impl IntoResponse {
-    // Let's avoid path traversal attacks, or other shenanigans.
-    let file_name = path
+async fn stream_file(path: &path::Path) -> Result<impl IntoResponse, Response> {
+    let attachment: &path::Path = path
         .file_name()
-        .ok_or((StatusCode::BAD_REQUEST, String::default()))?
-        .to_string_lossy();
+        .ok_or_else(|| (StatusCode::BAD_REQUEST, String::default()).into_response())?
+        .as_ref();
+    stream_file_as(path, attachment).await
+}
 
-    let file = fs::File::open(path).await;
-    let file = match file {
-        Ok(file) => file,
-        Err(err) => {
-            return Err((
-                StatusCode::NOT_FOUND,
-                format!(
-                    "Cannot open: {err}: {}",
-                    path.file_name().unwrap_or_default().to_string_lossy()
-                ),
-            ))
-        }
-    };
-    let guess = mime_guess::from_path(path);
+async fn stream_file_as(
+    path: &path::Path,
+    filename: &path::Path,
+) -> Result<impl IntoResponse, Response> {
+    let file = fs::File::open(path).await.map_err(|err| {
+        (
+            StatusCode::NOT_FOUND,
+            format!(
+                "Cannot open: {err}: {}",
+                path.file_name().unwrap_or_default().to_string_lossy()
+            ),
+        )
+            .into_response()
+    })?;
+
+    let guess = mime_guess::from_path(filename);
     let mime = guess
         .first_raw()
         .map(HeaderValue::from_static)
@@ -144,7 +147,11 @@ async fn stream_file(path: &path::Path) -> impl IntoResponse {
         (header::CONTENT_TYPE, mime),
         (
             header::CONTENT_DISPOSITION,
-            HeaderValue::from_str(&format!("attachment; filename=\"{file_name}\"")).expect(""),
+            HeaderValue::from_str(&format!(
+                "attachment; filename=\"{name}\"",
+                name = filename.to_string_lossy()
+            ))
+            .expect("Content-Disposition header parse"),
         ),
     ]);
 
