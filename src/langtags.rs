@@ -27,23 +27,21 @@ impl LangTags {
             io::Error::new(io::ErrorKind::InvalidData, error)
         }
 
-        let parse = |s: &str| s.trim().trim_start_matches('*').parse::<Tag>();
+        let parse = |s: &str| s.trim_start_matches(&[' ', '*', '\t'][..]).parse::<Tag>();
         let tagsets = reader
             .lines()
-            .filter_map(|l| {
-                if l.trim().is_empty() {
-                    None
-                } else {
-                    Some(
-                        l.split('=')
-                            .map(parse)
-                            .collect::<Result<HashSet<Tag>, _>>()
-                            .map(TagSet),
-                    )
-                }
+            .filter_map(|read_line| match read_line {
+                Ok(line) if line.trim().is_empty() => None,
+                Ok(line) => Some(
+                    line.split('=')
+                        .map(parse)
+                        .collect::<Result<HashSet<Tag>, _>>()
+                        .map(TagSet)
+                        .map_err(into_io_error),
+                ),
+                Err(err) => Some(Err(err)),
             })
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(into_io_error)?;
+            .collect::<Result<Vec<_>, _>>()?;
 
         let map: HashMap<Tag, TagSetRef> =
             tagsets
@@ -138,7 +136,7 @@ mod tests {
             .err()
             .expect("io::Error from langtags test case parse.");
         assert_eq!(test.kind(), io::ErrorKind::InvalidData);
-        assert_eq!(test.to_string(), "Parsing Error: (\"#*aa\", Tag)");
+        assert_eq!(test.to_string(), "Parsing Error: (\"#*aa \", Tag)");
     }
 
     #[test]
