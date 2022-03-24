@@ -223,7 +223,7 @@ enum LDML {
 #[get("/<ws_id>?<ext>&<flatten>&<inc>&<revid>&<staging>&<uid>", rank=1)]
 fn ldml(
         // ws_id: Tag,
-        ext: Option<String>,
+        // ext: Option<String>,
         // flatten: Option<Toggle>,
         inc: Option<String>,
         revid: Option<&RawStr>,
@@ -235,7 +235,7 @@ fn ldml(
     //     *staging.unwrap_or_default(), 
     //     *flatten.unwrap_or(Toggle::ON));
     // let langtags = cfg.langtags(*staging.unwrap_or_default());
-    let _ext = ext.unwrap_or("xml".into());
+    // let _ext = ext.unwrap_or("xml".into());
     // let not_found_status = || status::NotFound(format!("No LDML for {}\n", ws_id));
 
     // let ldml_path = find_ldml_file(&ws_id, &sldr_dir, &langtags)

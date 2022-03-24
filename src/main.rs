@@ -3,7 +3,7 @@ use axum::{
     extract::{Extension, Path, Query},
     http::{header, HeaderValue, Request, StatusCode},
     middleware::{self, Next},
-    response::{Headers, Html, IntoResponse, Redirect},
+    response::{Headers, Html, IntoResponse, Redirect, Response},
     routing::get,
     Router,
 };
@@ -73,7 +73,7 @@ async fn main() -> io::Result<()> {
     }
     let app = Router::new()
         .route("/langtags.:ext", get(langtags))
-        .route("/:ws_id", get(writing_system_endpoint))
+        .route("/:ws_id", get(demux_writing_system))
         .route("/", get(query_only))
         .route("/index.html", get(static_help))
         .layer(middleware::from_fn(move |req, next| {
@@ -206,31 +206,48 @@ struct WSParams {
     uid: Option<u32>,
 }
 
-async fn writing_system_endpoint(
-    Path(ws): Path<Tag>,
-    Query(params): Query<WSParams>,
-    Extension(cfg): Extension<Arc<Config>>,
-) -> impl IntoResponse {
-    tracing::debug!("language tag {ws:?}");
-    if let Some("tags") = params.query.as_deref() {
-        let tagset = query_tags(&ws, &cfg.langtags)
-            .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Invalid language tag: {ws}")));
-        return match tagset {
-            Ok(tagset) => tagset.into_response(),
-            Err(err) => err.into_response(),
-        };
-    }
-    let _ext = params.ext.as_deref().unwrap_or("xml");
+async fn writing_system_tags(ws: &Tag, cfg: &Config) -> impl IntoResponse {
+    query_tags(&ws, &cfg.langtags)
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Invalid language tag: {ws}")))
+}
+
+async fn fetch_wirting_system_ldml(ws: &Tag, params: &WSParams, cfg: &Config) -> impl IntoResponse {
+    let ext = params.ext.as_deref().unwrap_or("xml");
     let flatten = *params.flatten.unwrap_or(Toggle::ON);
     let _xpath = params.inc.as_deref().unwrap_or_default();
     let _revid = params.revid.as_deref().unwrap_or_default();
     let _uid = params.uid.unwrap_or_default();
 
     let path = find_ldml_file(&ws, &cfg.sldr_path(flatten), &cfg.langtags)
-        .ok_or((StatusCode::NOT_FOUND, format!("No LDML for {ws}")));
-    match path {
-        Ok(path) => stream_file(path.as_ref()).await.into_response(),
-        Err(err) => err.into_response(),
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("No LDML for {ws}")).into_response())?;
+    stream_file_as(
+        path.as_ref(),
+        path.with_extension(ext)
+            .file_name()
+            .ok_or_else(|| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Error generating attachment filename",
+                )
+                    .into_response()
+            })?
+            .as_ref(),
+    )
+    .await
+}
+
+async fn demux_writing_system(
+    Path(ws): Path<Tag>,
+    Query(params): Query<WSParams>,
+    Extension(cfg): Extension<Arc<Config>>,
+) -> impl IntoResponse {
+    tracing::debug!("language tag {ws:?}");
+    if let Some("tags") = params.query.as_deref() {
+        writing_system_tags(&ws, &cfg).await.into_response()
+    } else {
+        fetch_wirting_system_ldml(&ws, &params, &cfg)
+            .await
+            .into_response()
     }
 }
 
