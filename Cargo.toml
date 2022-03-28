@@ -14,17 +14,18 @@ authors = ["Tim Eves <tim_eves@sil.org>"]
 edition = "2018"
 
 [dependencies]
-axum = { version = "0.4" }
+axum = { version = "0.4", features = ["headers"]}
 clap = { version = "3.1.6", features = ["derive"] }
+#console-subscriber = "0"
 language-tag = { version = "0.0", path = "./language-tag" }
-mime = { version = "0.3" }
-mime_guess = { version = "2.0" }
+mime = "0.3"
+mime_guess = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_with = { version = "1.12" }
-serde_urlencoded = { version = "0.7"}
+serde_with = "1.12"
+serde_urlencoded = "0.7"
 tokio = { version = "1.15", features= ["full"] }
-tokio-util = { version = "0.7" }
+tokio-util = "0.7"
 tracing = "0.1"
 tracing-subscriber = { version="0.3", features = ["env-filter"] }
 tower-http = { version = "0.2.3", features = ["fs", "trace"] }

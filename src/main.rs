@@ -1,7 +1,8 @@
 use axum::{
     body::StreamBody,
     extract::{Extension, Path, Query},
-    http::{header, HeaderValue, Request, StatusCode},
+    headers::HeaderMapExt,
+    http::{header, HeaderMap, HeaderValue, Request, StatusCode},
     middleware::{self, Next},
     response::{Headers, Html, IntoResponse, Redirect, Response},
     routing::get,
@@ -10,11 +11,18 @@ use axum::{
 use clap::Parser;
 use language_tag::Tag;
 use serde::Deserialize;
-use std::{collections::HashMap, io, net::SocketAddr, path, sync::Arc};
+use std::{
+    collections::HashMap,
+    io,
+    net::SocketAddr,
+    path, str,
+    sync::Arc,
+};
 use tokio::fs;
 use tower_http::trace::TraceLayer;
 
 mod config;
+mod etag;
 mod langtags;
 mod toggle;
 
@@ -52,6 +60,7 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
+    //console_subscriber::init();
     // Set the RUST_LOG, if it hasn't been explicitly defined
     if std::env::var_os("RUST_LOG").is_none() {
         std::env::set_var("RUST_LOG", "ldml_api=debug,tower_http=debug")
@@ -73,7 +82,12 @@ async fn main() -> io::Result<()> {
     }
     let app = Router::new()
         .route("/langtags.:ext", get(langtags))
-        .route("/:ws_id", get(demux_writing_system))
+        .route(
+            "/:ws_id",
+            get(demux_writing_system)
+                .layer(middleware::from_fn(etag::layer))
+                .layer(middleware::from_fn(etag::revid::converter)),
+        )
         .route("/", get(query_only))
         .route("/index.html", get(static_help))
         .layer(middleware::from_fn(move |req, next| {
@@ -96,7 +110,7 @@ async fn profile_selector<B>(
     next: Next<B>,
     cfg: Arc<Profiles>,
     default_profile: Arc<String>,
-) -> impl IntoResponse {
+) -> Response {
     let staging = req
         .uri()
         .query()
@@ -125,6 +139,22 @@ async fn stream_file_as(
     path: &path::Path,
     filename: &path::Path,
 ) -> Result<impl IntoResponse, Response> {
+    let guess = mime_guess::from_path(filename);
+    let mime = guess.first_or_octet_stream();
+    let headers = Headers([
+        (
+            header::CONTENT_TYPE,
+            HeaderValue::from_str(mime.as_ref()).expect("failed to parse mimetype"),
+        ),
+        (
+            header::CONTENT_DISPOSITION,
+            HeaderValue::from_str(&format!(
+                "attachment; filename=\"{name}\"",
+                name = filename.to_string_lossy()
+            ))
+            .expect("failed to parse Content-Disposition header value"),
+        ),
+    ]);
     let file = fs::File::open(path).await.map_err(|err| {
         (
             StatusCode::NOT_FOUND,
@@ -135,25 +165,8 @@ async fn stream_file_as(
         )
             .into_response()
     })?;
-
-    let guess = mime_guess::from_path(filename);
-    let mime = guess
-        .first_raw()
-        .map(HeaderValue::from_static)
-        .unwrap_or_else(|| HeaderValue::from_str(mime::APPLICATION_OCTET_STREAM.as_ref()).unwrap());
-    let stream = tokio_util::io::ReaderStream::new(file);
+    let stream = tokio_util::io::ReaderStream::with_capacity(file, 1 << 14); // 16KiB buffer
     let body = StreamBody::new(stream);
-    let headers = Headers([
-        (header::CONTENT_TYPE, mime),
-        (
-            header::CONTENT_DISPOSITION,
-            HeaderValue::from_str(&format!(
-                "attachment; filename=\"{name}\"",
-                name = filename.to_string_lossy()
-            ))
-            .expect("Content-Disposition header parse"),
-        ),
-    ]);
 
     Ok((headers, body))
 }
@@ -219,7 +232,14 @@ async fn fetch_wirting_system_ldml(ws: &Tag, params: &WSParams, cfg: &Config) ->
     let _uid = params.uid.unwrap_or_default();
 
     let path = find_ldml_file(&ws, &cfg.sldr_path(flatten), &cfg.langtags)
-        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("No LDML for {ws}")).into_response())?;
+    .ok_or_else(|| (StatusCode::NOT_FOUND, format!("No LDML for {ws}")).into_response())?;
+    let etag = etag::revid::from_ldml(&path)
+    .or_else(|| etag::from_metadata(&path));
+    let mut headers = HeaderMap::new();
+    
+    if let Some(tag) = etag {
+        headers.typed_insert(tag);
+    }
     stream_file_as(
         path.as_ref(),
         path.with_extension(ext)
@@ -234,6 +254,7 @@ async fn fetch_wirting_system_ldml(ws: &Tag, params: &WSParams, cfg: &Config) ->
             .as_ref(),
     )
     .await
+    .map(|resp| (headers, resp))
 }
 
 async fn demux_writing_system(

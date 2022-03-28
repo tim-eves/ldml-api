@@ -119,35 +119,35 @@ impl<'r> Responder<'r> for SendFile {
     }
 }
 
-struct ETag<R>(R, Option<header::EntityTag>);
+// struct ETag<R>(R, Option<header::EntityTag>);
 
-impl<'r, R> Responder<'r> for ETag<R> 
-where
-    R: Responder<'r>
-{
-    fn respond_to(self, rq: &Request) -> response::Result<'r> {
-        let incoming: Option<_> = rq.get_query_value::<String>("revid")
-            .and_then(Result::ok)
-            .map(|v| format!("\"{}\"", v))
-            .or(rq.headers().get_one("If-None-Match")
-                .map(|s| s.to_string()));
+// impl<'r, R> Responder<'r> for ETag<R> 
+// where
+//     R: Responder<'r>
+// {
+//     fn respond_to(self, rq: &Request) -> response::Result<'r> {
+//         let incoming: Option<_> = rq.get_query_value::<String>("revid")
+//             .and_then(Result::ok)
+//             .map(|v| format!("\"{}\"", v))
+//             .or(rq.headers().get_one("If-None-Match")
+//                 .map(|s| s.to_string()));
 
-        let mut rsp = self.0.respond_to(rq)?;
+//         let mut rsp = self.0.respond_to(rq)?;
 
-        if let Some(target) = incoming {
-            let etag = str::parse::<header::EntityTag>(&target)
-            .map_err(|_| Status::BadRequest)?;
+//         if let Some(target) = incoming {
+//             let etag = str::parse::<header::EntityTag>(&target)
+//             .map_err(|_| Status::BadRequest)?;
 
-            if Some(etag) == self.1 {
-                return Response::build().status(Status::NotModified).ok();
-            }
-        }
-        if let Some(etag) = self.1 { 
-            rsp.set_header(header::ETag(etag)); 
-        }
-        Ok(rsp)
-    }
-}
+//             if Some(etag) == self.1 {
+//                 return Response::build().status(Status::NotModified).ok();
+//             }
+//         }
+//         if let Some(etag) = self.1 { 
+//             rsp.set_header(header::ETag(etag)); 
+//         }
+//         Ok(rsp)
+//     }
+// }
 
 // #[get("/?query=alltags", rank=0)]
 // fn query_alltags() -> status::NotFound<&'static str> {
@@ -226,7 +226,7 @@ fn ldml(
         // ext: Option<String>,
         // flatten: Option<Toggle>,
         inc: Option<String>,
-        revid: Option<&RawStr>,
+        // revid: Option<&RawStr>,
         // staging: Option<Toggle>,
         uid: Option<u32>,
         // cfg: State<APIConfig>) -> Result<LDML, status::NotFound<String>>
@@ -240,17 +240,17 @@ fn ldml(
 
     // let ldml_path = find_ldml_file(&ws_id, &sldr_dir, &langtags)
     //     .ok_or_else(not_found_status)?;
-    let etag = revid
-        .and(fs::File::open(&ldml_path).ok())
-        .and_then(get_revid_from_ldml)
-        .map(if inc.is_some() { header::EntityTag::weak } 
-             else             { header::EntityTag::strong });
+    // let etag = revid
+    //     .and(fs::File::open(&ldml_path).ok())
+    //     .and_then(get_revid_from_ldml)
+    //     .map(if inc.is_some() { header::EntityTag::weak } 
+    //          else             { header::EntityTag::strong });
     if let Some(inc) = inc {
         let toplevels: Vec<&str> = inc.split(",").map(str::trim).collect();
         let filtered = filter_toplevels_from_ldml(
             fs::File::open(ldml_path).map_err(|_| not_found_status())?, 
             &toplevels);
-        Ok(LDML::Dynamic(ETag(Stream::chunked(filtered, 1<<12), etag)))
+        // Ok(LDML::Dynamic(ETag(Stream::chunked(filtered, 1<<12), etag)))
     } else {
         // Ok(LDML::Static(ETag(
         //     SendFile(NamedFile::open(ldml_path)
@@ -283,23 +283,23 @@ fn ldml(
 //         }).rfind(|path| path.exists())
 // }
 
-fn get_revid_from_ldml<R: io::Read>(reader: R) -> Option<String> {
-    use xml::reader::{ EventReader, XmlEvent };
+// fn get_revid_from_ldml<R: io::Read>(reader: R) -> Option<String> {
+//     use xml::reader::{ EventReader, XmlEvent };
 
-    let sil_identity = EventReader::new(reader).into_iter()
-        .find(|event| {
-            if let Ok(XmlEvent::StartElement{name,..}) = event {
-                name.prefix.as_deref().unwrap_or("") == "sil"
-                && name.local_name == "identity" 
-            } else { false } 
-    }); 
-    if let Some(Ok(XmlEvent::StartElement{attributes,..})) = sil_identity
-    {
-        attributes.iter()
-            .find(|attr| attr.name.local_name == "revid")
-            .map(|attr| attr.value.clone())
-    } else { None }
-}
+//     let sil_identity = EventReader::new(reader).into_iter()
+//         .find(|event| {
+//             if let Ok(XmlEvent::StartElement{name,..}) = event {
+//                 name.prefix.as_deref().unwrap_or("") == "sil"
+//                 && name.local_name == "identity" 
+//             } else { false } 
+//     }); 
+//     if let Some(Ok(XmlEvent::StartElement{attributes,..})) = sil_identity
+//     {
+//         attributes.iter()
+//             .find(|attr| attr.name.local_name == "revid")
+//             .map(|attr| attr.value.clone())
+//     } else { None }
+// }
 
 fn filter_toplevels_from_ldml<R1:'static + io::Read + Send + Sync>(reader: R1, toplevels: &[&str]) -> ChannelReader {
     use std::collections::BTreeSet;
