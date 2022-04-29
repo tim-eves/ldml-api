@@ -2,3 +2,4 @@
 /php
 /Cargo.lock
 **/*.rs.bk
+/.vscode

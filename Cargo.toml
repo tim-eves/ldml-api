@@ -18,6 +18,8 @@ axum = { version = "0.4", features = ["headers"]}
 clap = { version = "3.1.6", features = ["derive"] }
 #console-subscriber = "0"
 language-tag = { version = "0.0", path = "./language-tag" }
+# We need to use upstream repo until space leak fix is released.
+libxml = { git = "https://github.com/KWARC/rust-libxml"}
 mime = "0.3"
 mime_guess = "2.0"
 serde = { version = "1.0", features = ["derive"] }

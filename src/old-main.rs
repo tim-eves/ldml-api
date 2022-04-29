@@ -1,30 +1,30 @@
-#![feature(
-    binary_heap_drain_sorted,
-    decl_macro, 
-    option_result_contains,
-    proc_macro_hygiene, 
-    trace_macros,
-    try_trait,
-)]
-use rocket::{
-    Request,
-    Response,
-    State,
-    config::{ Config, ConfigError, Value },
-    fairing::{ AdHoc },
-    http::{ RawStr, Status, hyper::header },
-    request::{ FromFormValue, FromParam },
-    response::{ self, NamedFile, Responder, Stream, status }
-};
-use std::{
-    collections::HashSet,
-    fs, 
-    io,
-    ops::Deref,
-    path::{ Path, PathBuf },
-    str::FromStr,
-    sync::Arc,
-};
+// #![feature(
+//     binary_heap_drain_sorted,
+//     decl_macro, 
+//     option_result_contains,
+//     proc_macro_hygiene, 
+//     trace_macros,
+//     try_trait,
+// )]
+// use rocket::{
+//     Request,
+//     Response,
+//     State,
+//     config::{ Config, ConfigError, Value },
+//     fairing::{ AdHoc },
+//     http::{ RawStr, Status, hyper::header },
+//     request::{ FromFormValue, FromParam },
+//     response::{ self, NamedFile, Responder, Stream, status }
+// };
+// use std::{
+//     collections::HashSet,
+//     fs, 
+//     io,
+//     ops::Deref,
+//     path::{ Path, PathBuf },
+//     str::FromStr,
+//     sync::Arc,
+// };
 
 // #[macro_use] extern crate rocket;
 
@@ -91,33 +91,33 @@ use std::{
 // }    
 
 
-#[derive(Debug)]
-struct SendFile(NamedFile);
+// #[derive(Debug)]
+// struct SendFile(NamedFile);
 
-impl<'r> Responder<'r> for SendFile {
-    fn respond_to(self, rq: &Request) -> response::Result<'r> {
-        let cfg = rq.guard::<State<APIConfig>>().unwrap();
-        let path = self.0.path().to_owned();
-        let mut rsp = self.0.respond_to(rq)?;
+// impl<'r> Responder<'r> for SendFile {
+//     fn respond_to(self, rq: &Request) -> response::Result<'r> {
+//         let cfg = rq.guard::<State<APIConfig>>().unwrap();
+//         let path = self.0.path().to_owned();
+//         let mut rsp = self.0.respond_to(rq)?;
 
-        if let Some(method) = &cfg.sendfile_method {
-            let disposition = rq.headers().get_one("Content-Disposition")
-                .map(str::to_string)
-                .unwrap_or({
-                    let filename = path.file_name().unwrap();
-                    format!("attachment; filename={:?}", filename.to_string_lossy())
-                });
-            rsp.take_body();
+//         if let Some(method) = &cfg.sendfile_method {
+//             let disposition = rq.headers().get_one("Content-Disposition")
+//                 .map(str::to_string)
+//                 .unwrap_or({
+//                     let filename = path.file_name().unwrap();
+//                     format!("attachment; filename={:?}", filename.to_string_lossy())
+//                 });
+//             rsp.take_body();
             
-            Response::build_from(rsp)
-                .raw_header(method.clone(), path.to_string_lossy().into_owned())
-                .raw_header("Content-Disposition", disposition)
-                .ok()
-        } else {
-            Ok(rsp)
-        }
-    }
-}
+//             Response::build_from(rsp)
+//                 .raw_header(method.clone(), path.to_string_lossy().into_owned())
+//                 .raw_header("Content-Disposition", disposition)
+//                 .ok()
+//         } else {
+//             Ok(rsp)
+//         }
+//     }
+// }
 
 // struct ETag<R>(R, Option<header::EntityTag>);
 
@@ -201,63 +201,63 @@ impl<'r> Responder<'r> for SendFile {
 //     )
 // }
 
-#[get("/?<ws_id>&<ext>&<flatten>&<inc>&<revid>&<staging>&<uid>", rank=0)]
-fn ldml_query_ws(ws_id: Tag,
-                 ext: Option<String>,
-                 flatten: Option<Toggle>,
-                 inc: Option<String>,
-                 revid: Option<&RawStr>,
-                //  staging: Option<Toggle>,
-                 uid: Option<u32>,
-                 cfg: State<APIConfig>) -> Result<LDML, status::NotFound<String>> 
-{
-    ldml(ws_id, ext, flatten, inc, revid, staging, uid, cfg)
-}
+// #[get("/?<ws_id>&<ext>&<flatten>&<inc>&<revid>&<staging>&<uid>", rank=0)]
+// fn ldml_query_ws(ws_id: Tag,
+//                  ext: Option<String>,
+//                  flatten: Option<Toggle>,
+//                  inc: Option<String>,
+//                  revid: Option<&RawStr>,
+//                 //  staging: Option<Toggle>,
+//                  uid: Option<u32>,
+//                  cfg: State<APIConfig>) -> Result<LDML, status::NotFound<String>> 
+// {
+//     ldml(ws_id, ext, flatten, inc, revid, staging, uid, cfg)
+// }
 
-#[derive(Responder)]
-enum LDML {
-    // Static(ETag<SendFile>),
-    Dynamic(ETag<Stream<ChannelReader>>)
-}
+// #[derive(Responder)]
+// enum LDML {
+//     // Static(ETag<SendFile>),
+//     Dynamic(ETag<Stream<ChannelReader>>)
+// }
 
-#[get("/<ws_id>?<ext>&<flatten>&<inc>&<revid>&<staging>&<uid>", rank=1)]
-fn ldml(
-        // ws_id: Tag,
-        // ext: Option<String>,
-        // flatten: Option<Toggle>,
-        inc: Option<String>,
-        // revid: Option<&RawStr>,
-        // staging: Option<Toggle>,
-        uid: Option<u32>,
-        // cfg: State<APIConfig>) -> Result<LDML, status::NotFound<String>>
-{    
-    // let sldr_dir = cfg.sldr_path(
-    //     *staging.unwrap_or_default(), 
-    //     *flatten.unwrap_or(Toggle::ON));
-    // let langtags = cfg.langtags(*staging.unwrap_or_default());
-    // let _ext = ext.unwrap_or("xml".into());
-    // let not_found_status = || status::NotFound(format!("No LDML for {}\n", ws_id));
+// #[get("/<ws_id>?<ext>&<flatten>&<inc>&<revid>&<staging>&<uid>", rank=1)]
+// fn ldml(
+//         ws_id: Tag,
+//         ext: Option<String>,
+//         flatten: Option<Toggle>,
+//         inc: Option<String>,
+//         revid: Option<&RawStr>,
+//         staging: Option<Toggle>,
+//         uid: Option<u32>,
+//         cfg: State<APIConfig>) -> Result<LDML, status::NotFound<String>>
+// {    
+//     let sldr_dir = cfg.sldr_path(
+//         *staging.unwrap_or_default(), 
+//         *flatten.unwrap_or(Toggle::ON));
+//     let langtags = cfg.langtags(*staging.unwrap_or_default());
+//     let _ext = ext.unwrap_or("xml".into());
+//     let not_found_status = || status::NotFound(format!("No LDML for {}\n", ws_id));
 
-    // let ldml_path = find_ldml_file(&ws_id, &sldr_dir, &langtags)
-    //     .ok_or_else(not_found_status)?;
-    // let etag = revid
-    //     .and(fs::File::open(&ldml_path).ok())
-    //     .and_then(get_revid_from_ldml)
-    //     .map(if inc.is_some() { header::EntityTag::weak } 
-    //          else             { header::EntityTag::strong });
-    if let Some(inc) = inc {
-        let toplevels: Vec<&str> = inc.split(",").map(str::trim).collect();
-        let filtered = filter_toplevels_from_ldml(
-            fs::File::open(ldml_path).map_err(|_| not_found_status())?, 
-            &toplevels);
-        // Ok(LDML::Dynamic(ETag(Stream::chunked(filtered, 1<<12), etag)))
-    } else {
-        // Ok(LDML::Static(ETag(
-        //     SendFile(NamedFile::open(ldml_path)
-        //         .map_err(|_| not_found_status())?), 
-        //     etag)))
-    }
-}
+//     let ldml_path = find_ldml_file(&ws_id, &sldr_dir, &langtags)
+//         .ok_or_else(not_found_status)?;
+//     let etag = revid
+//         .and(fs::File::open(&ldml_path).ok())
+//         .and_then(get_revid_from_ldml)
+//         .map(if inc.is_some() { header::EntityTag::weak } 
+//              else             { header::EntityTag::strong });
+//     if let Some(inc) = inc {
+//         let toplevels: Vec<&str> = inc.split(",").map(str::trim).collect();
+//         let filtered = filter_toplevels_from_ldml(
+//             fs::File::open(ldml_path).map_err(|_| not_found_status())?, 
+//             &toplevels);
+//         Ok(LDML::Dynamic(ETag(Stream::chunked(filtered, 1<<12), etag)))
+//     } else {
+//         Ok(LDML::Static(ETag(
+//             SendFile(NamedFile::open(ldml_path)
+//                 .map_err(|_| not_found_status())?), 
+//             etag)))
+//     }
+// }
 
 
 // #[get("/", rank=10)]
@@ -301,49 +301,49 @@ fn ldml(
 //     } else { None }
 // }
 
-fn filter_toplevels_from_ldml<R1:'static + io::Read + Send + Sync>(reader: R1, toplevels: &[&str]) -> ChannelReader {
-    use std::collections::BTreeSet;
-    use xml::reader::XmlEvent;
+// fn filter_toplevels_from_ldml<R1:'static + io::Read + Send + Sync>(reader: R1, toplevels: &[&str]) -> ChannelReader {
+//     use std::collections::BTreeSet;
+//     use xml::reader::XmlEvent;
 
-    let (sender, receiver) = bytes_channel();
-    let mut include: BTreeSet<String>  = toplevels.iter().map(|s| s.to_string()).collect();
-    include.insert("ldml".to_owned());
-    include.insert("identity".to_owned());
+//     let (sender, receiver) = bytes_channel();
+//     let mut include: BTreeSet<String>  = toplevels.iter().map(|s| s.to_string()).collect();
+//     include.insert("ldml".to_owned());
+//     include.insert("identity".to_owned());
 
-    std::thread::spawn(move || {
-        let reader = xml::ParserConfig::new()
-            .trim_whitespace(true)
-            .create_reader(io::BufReader::new(reader));
-        let mut writer = xml::EmitterConfig::new()
-            .write_document_declaration(false)
-            .keep_element_names_stack(false)
-            .perform_indent(true)
-            .indent_string("\t")
-            .create_writer(io::BufWriter::new(sender));
+//     std::thread::spawn(move || {
+//         let reader = xml::ParserConfig::new()
+//             .trim_whitespace(true)
+//             .create_reader(io::BufReader::new(reader));
+//         let mut writer = xml::EmitterConfig::new()
+//             .write_document_declaration(false)
+//             .keep_element_names_stack(false)
+//             .perform_indent(true)
+//             .indent_string("\t")
+//             .create_writer(io::BufWriter::new(sender));
 
-        let mut skip = false;
-        let mut level = 0;
-        for e in reader {
-            let e = e.unwrap();
-            match e {
-                XmlEvent::StartElement{ref name, ..} => {
-                    let tag = name.to_string();
-                    if level == 1 && !include.contains(&tag) { skip = true; }
-                    level += 1;
-                },
-                XmlEvent::EndElement{..} => {
-                    level -= 1;
-                    if level == 1 && skip { skip = false; continue; }
-                },
-                _ => ()
-            }
-            if !skip {
-                e.as_writer_event().map(|e| writer.write(e));
-            }
-        }
-    });
-    receiver
-}
+//         let mut skip = false;
+//         let mut level = 0;
+//         for e in reader {
+//             let e = e.unwrap();
+//             match e {
+//                 XmlEvent::StartElement{ref name, ..} => {
+//                     let tag = name.to_string();
+//                     if level == 1 && !include.contains(&tag) { skip = true; }
+//                     level += 1;
+//                 },
+//                 XmlEvent::EndElement{..} => {
+//                     level -= 1;
+//                     if level == 1 && skip { skip = false; continue; }
+//                 },
+//                 _ => ()
+//             }
+//             if !skip {
+//                 e.as_writer_event().map(|e| writer.write(e));
+//             }
+//         }
+//     });
+//     receiver
+// }
 
 // #[derive(Debug)]
 // struct APIConfig {
@@ -427,42 +427,42 @@ fn filter_toplevels_from_ldml<R1:'static + io::Read + Send + Sync>(reader: R1, t
 //     Ok(())
 // }
 
-use std::{
-    io::{Read, Write},
-    sync::mpsc::{SyncSender, RecvError, Receiver, sync_channel }
-};
+// use std::{
+//     io::{Read, Write},
+//     sync::mpsc::{SyncSender, RecvError, Receiver, sync_channel }
+// };
 
 
-struct ChannelReader(Receiver<Box<[u8]>>, io::Cursor<Box<[u8]>>);
-impl Read for ChannelReader {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let mut len = 0;
-        while len < buf.len() {
-            match self.1.read(&mut buf[len..])? {
-                0 => match self.0.recv() {
-                    Ok(msg) => self.1 = io::Cursor::new(msg),
-                    Err(RecvError) => break
-                },
-                n => len += n
-            }
-        };
-        Ok(len)
-    }
-}
+// struct ChannelReader(Receiver<Box<[u8]>>, io::Cursor<Box<[u8]>>);
+// impl Read for ChannelReader {
+//     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+//         let mut len = 0;
+//         while len < buf.len() {
+//             match self.1.read(&mut buf[len..])? {
+//                 0 => match self.0.recv() {
+//                     Ok(msg) => self.1 = io::Cursor::new(msg),
+//                     Err(RecvError) => break
+//                 },
+//                 n => len += n
+//             }
+//         };
+//         Ok(len)
+//     }
+// }
 
-struct ChannelWriter(SyncSender<Box<[u8]>>);
-impl Write for ChannelWriter {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.0.send(buf.to_owned().into_boxed_slice())
-                .map_err(|_| io::ErrorKind::BrokenPipe)?;
-        Ok(buf.len())
-    }
+// struct ChannelWriter(SyncSender<Box<[u8]>>);
+// impl Write for ChannelWriter {
+//     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+//         self.0.send(buf.to_owned().into_boxed_slice())
+//                 .map_err(|_| io::ErrorKind::BrokenPipe)?;
+//         Ok(buf.len())
+//     }
 
-    fn flush(&mut self) -> io::Result<()> { Ok(()) }
-}
+//     fn flush(&mut self) -> io::Result<()> { Ok(()) }
+// }
 
-fn bytes_channel() -> (ChannelWriter, ChannelReader) {
-    let (sender, recevier) = sync_channel(1);
-    (ChannelWriter(sender),
-     ChannelReader(recevier, io::Cursor::new(vec![].into_boxed_slice())))
-}
+// fn bytes_channel() -> (ChannelWriter, ChannelReader) {
+//     let (sender, recevier) = sync_channel(1);
+//     (ChannelWriter(sender),
+//      ChannelReader(recevier, io::Cursor::new(vec![].into_boxed_slice())))
+// }

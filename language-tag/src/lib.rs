@@ -257,8 +257,8 @@ mod parser {
         let language = recognize(pair(alphanums(2, 3), opt(extlang)));
         let script = subtag(letters(4));
         let region = subtag(alt((letters(2), digits(3))));
-        let variants = subtag(alt((ident, alphanums(5, 8))));
-        let extensions = subtag(extension_form(singleton, 2));
+        let variant = subtag(alt((ident, alphanums(5, 8))));
+        let extension = subtag(extension_form(singleton, 2));
         let terminator = not(peek(verify(anychar, |c| {
             *c == '-' || c.is_ascii_alphanumeric()
         })));
@@ -267,8 +267,8 @@ mod parser {
                 context("language code", from_str(language)),
                 context("script code", opt(from_str(script))),
                 context("region code", opt(from_str(region))),
-                context("variant subtags", many0(from_str(variants))),
-                context("extension subtags", many0(from_str(extensions))),
+                context("variant subtags", many0(from_str(variant))),
+                context("extension subtags", many0(from_str(extension))),
                 context("private subtag", opt(from_str(subtag(private)))),
             )),
             terminator,

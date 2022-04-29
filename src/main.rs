@@ -18,12 +18,13 @@ use std::{
     path, str,
     sync::Arc,
 };
-use tokio::fs;
+use tokio::{fs, task};
 use tower_http::trace::TraceLayer;
 
 mod config;
 mod etag;
 mod langtags;
+mod ldml;
 mod toggle;
 
 /*
@@ -227,7 +228,7 @@ async fn writing_system_tags(ws: &Tag, cfg: &Config) -> impl IntoResponse {
 async fn fetch_wirting_system_ldml(ws: &Tag, params: &WSParams, cfg: &Config) -> impl IntoResponse {
     let ext = params.ext.as_deref().unwrap_or("xml");
     let flatten = *params.flatten.unwrap_or(Toggle::ON);
-    let _xpath = params.inc.as_deref().unwrap_or_default();
+    let xpaths = params.inc;
     let _revid = params.revid.as_deref().unwrap_or_default();
     let _uid = params.uid.unwrap_or_default();
 
@@ -240,20 +241,27 @@ async fn fetch_wirting_system_ldml(ws: &Tag, params: &WSParams, cfg: &Config) ->
     if let Some(tag) = etag {
         headers.typed_insert(tag);
     }
-    stream_file_as(
-        path.as_ref(),
-        path.with_extension(ext)
-            .file_name()
-            .ok_or_else(|| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Error generating attachment filename",
-                )
-                    .into_response()
-            })?
-            .as_ref(),
-    )
-    .await
+    if let Some(xpaths) = xpaths {
+        ldml_subset(path.as_ref(), &xpaths)
+            .await
+            .map(IntoResponse::into_response)
+    } else {
+        stream_file_as(
+            path.as_ref(),
+            path.with_extension(ext)
+                .file_name()
+                .ok_or_else(|| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Error generating attachment filename",
+                    )
+                        .into_response()
+                })?
+                .as_ref(),
+        )
+        .await
+        .map(IntoResponse::into_response)
+    }
     .map(|resp| (headers, resp))
 }
 
@@ -311,4 +319,15 @@ fn find_ldml_file(ws: &Tag, sldr_dir: &path::Path, langtags: &LangTags) -> Optio
             path.with_extension("xml")
         })
         .rfind(|path| path.exists())
+}
+
+async fn ldml_subset(path: &path::Path, xpaths: &str) -> Result<impl IntoResponse, Response> {
+    task::block_in_place(|| {
+        let xpaths = xpaths.split(',').collect::<Vec<_>>();
+        let mut doc = ldml::Document::new(&path)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
+        doc.subset(&xpaths)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
+        Ok(doc.to_string())
+    })
 }
