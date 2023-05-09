@@ -11,5 +11,5 @@ edition = "2018"
 [lib]
 
 [dependencies]
-nom = "5"
-serde_with = { version = "1.12" }
+nom = "7"
+serde_with = "3.0.0"

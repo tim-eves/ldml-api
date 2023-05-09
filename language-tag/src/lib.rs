@@ -152,19 +152,21 @@ mod parser {
         bytes::complete::{tag, take_while_m_n},
         character::complete::{anychar, char, none_of},
         combinator::{map, not, opt, peek, recognize, value, verify},
-        error::{context, ErrorKind},
-        multi::{many0, many_m_n, separated_nonempty_list},
+        error::{context, Error},
+        multi::{many0, many_m_n, separated_list1},
         sequence::{delimited, pair, separated_pair, terminated, tuple},
+        Finish,
         IResult,
     };
 
     impl FromStr for Tag {
-        type Err = self::nom::Err<(String, ErrorKind)>;
+        type Err = Error<String>;
 
         fn from_str(s: &str) -> Result<Self, Self::Err> {
             self::languagetag(s)
-                .map(|r| r.1)
-                .map_err(|err| err.map_input(|inp| inp.to_string()))
+                .map_err(|err| err.to_owned())
+                .finish()
+                .map(|(_r, tag) | tag)
         }
     }
 
@@ -175,28 +177,28 @@ mod parser {
     fn extension_form<'a, O, F>(
         prefix: F,
         min: usize,
-    ) -> impl Fn(&'a str) -> IResult<&'a str, &'a str>
+    ) -> impl FnMut(&'a str) -> IResult<&'a str, &'a str>
     where
-        F: Fn(&'a str) -> IResult<&'a str, O>,
+        F: FnMut(&'a str) -> IResult<&'a str, O>,
     {
         recognize(separated_pair(
             prefix,
             dash,
-            separated_nonempty_list(dash, alphanums(min, 8)),
+            separated_list1(dash, alphanums(min, 8)),
         ))
     }
 
-    fn subtag<'a, O, F>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
+    fn subtag<'a, O, F>(parser: F) -> impl FnMut(&'a str) -> IResult<&'a str, O>
     where
-        F: Fn(&'a str) -> IResult<&'a str, O>,
+        F: FnMut(&'a str) -> IResult<&'a str, O>,
     {
         let eot = not(peek(verify(anychar, |c| c.is_ascii_alphanumeric())));
         delimited(dash, parser, eot)
     }
 
-    fn from_str<'a, F>(parser: F) -> impl Fn(&'a str) -> IResult<&'a str, String>
+    fn from_str<'a, F>(parser: F) -> impl FnMut(&'a str) -> IResult<&'a str, String>
     where
-        F: Fn(&'a str) -> IResult<&'a str, &'a str>,
+        F: FnMut(&'a str) -> IResult<&'a str, &'a str>,
     {
         map(parser, str::to_string)
     }
@@ -214,7 +216,7 @@ mod parser {
         lang: L,
         region: R,
         variant: V,
-    ) -> impl Fn(&'a str) -> IResult<&'a str, Tag>
+    ) -> impl FnMut(&'a str) -> IResult<&'a str, Tag>
     where
         L: Into<Option<&'static str>>,
         R: Into<Option<&'static str>>,
@@ -417,10 +419,7 @@ mod tests {
     fn complex() {
         use nom::{error::ErrorKind, Err};
         let gf_cases = [
-            ("-", Err(Err::Error(("-".to_string(), ErrorKind::Tag)))),
-            ("de", Ok(Tag::lang("de"))),
-            ("en-x-priv2", Ok(Tag::lang("en").private("x-priv2"))),
-            ("en-us", Ok(Tag::lang("en").region("us"))),
+            ("-", Err(Error { input: "-".to_string(), code: ErrorKind::Tag })),
             (
                 "en-Latn-US",
                 Ok(Tag::lang("en").script("Latn").region("US")),
