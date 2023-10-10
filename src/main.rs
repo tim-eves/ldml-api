@@ -11,13 +11,7 @@ use axum::{
 use clap::Parser;
 use language_tag::Tag;
 use serde::Deserialize;
-use std::{
-    collections::HashMap,
-    io,
-    net::SocketAddr,
-    path, str,
-    sync::Arc,
-};
+use std::{collections::HashMap, io, iter, net::SocketAddr, path, str, sync::Arc};
 use tokio::{fs, task};
 use tower_http::{compression::CompressionLayer, trace::TraceLayer};
 
@@ -297,27 +291,15 @@ async fn demux_writing_system(
 }
 
 fn query_tags(ws: &Tag, langtags: &LangTags) -> Option<String> {
-    let predicate: Box<dyn Fn(&Tag) -> bool> = match ws {
-        Tag {
-            script: None,
-            region: Some(_),
-            ..
-        } => Box::new(|t| t.lang == ws.lang && t.region == ws.region),
-        Tag {
-            script: Some(_), ..
-        } => Box::new(|t| t.lang == ws.lang && t.script == ws.script),
-        _ => Box::new(|t| t.lang == ws.lang),
-    };
-    langtags
-        .tagsets()
-        .filter_map(|ts| {
-            if ts.iter().any(&predicate) {
-                Some(ts.to_string() + "\n")
-            } else {
-                None
-            }
-        })
-        .reduce(|accum, item| accum + &item)
+    use langtags::tagset::render_equivalence_set;
+
+    let tagset = langtags.orthographic_normal_form(ws)?;
+    let regionsets = tagset.region_sets().map(render_equivalence_set);
+    let variantsets = tagset.variant_sets().map(render_equivalence_set);
+    iter::once(tagset.to_string())
+        .chain(regionsets)
+        .chain(variantsets)
+        .reduce(|resp, ref set| resp + "\n" + set)
 }
 
 fn find_ldml_file(ws: &Tag, sldr_dir: &path::Path, langtags: &LangTags) -> Option<path::PathBuf> {
@@ -434,6 +416,30 @@ mod test {
         response.status()
     }
 
+    #[tokio::test]
+    async fn query_tags() {
+        let app = get_app();
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri(format!("/frm?query=tags"))
+                    .body(Body::empty())
+                    .expect("Request"),
+            )
+            .await
+            .expect("Response");
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        assert_eq!(
+            &body[..],
+            b"frm=frm-FR=frm-Latn=frm-Latn-FR\n\
+              frm-BE=frm-Latn-BE\n\
+              frm-1606nict=frm-FR-1606nict=frm-Latn-1606nict=frm-Latn-FR-1606nict\n\
+              frm-BE-1606nict=frm-Latn-BE-1606nict"
+        );
+    }
 
     #[tokio::test]
     async fn simple_writing_system_request() {
