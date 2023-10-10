@@ -1,4 +1,4 @@
-use crate::langtags::LangTags;
+use langtags::json::LangTags;
 use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
 
 #[derive(Debug, PartialEq)]
@@ -18,8 +18,7 @@ impl Config {
 pub type Profiles = BTreeMap<String, Arc<Config>>;
 
 pub mod profiles {
-    use super::{Config, Profiles};
-    use crate::langtags::LangTags;
+    use super::{Config, LangTags, Profiles};
     use serde_json::Value;
     use std::{
         fs::File,
@@ -70,7 +69,7 @@ pub mod profiles {
                     Ok(())
                 })?;
 
-            let reader = BufReader::new(File::open(langtags_dir.join("langtags.txt"))?);
+            let reader = BufReader::new(File::open(langtags_dir.join("langtags.json"))?);
             let langtags = LangTags::from_reader(reader)?;
 
             configs.insert(
@@ -89,9 +88,8 @@ pub mod profiles {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{profiles, Arc, Config, Profiles};
-    use crate::langtags::LangTags;
+mod test {
+    use super::{profiles, Arc, Config, LangTags, Profiles};
 
     #[test]
     fn missing_config() {
@@ -136,29 +134,117 @@ mod tests {
         let res = profiles::from_reader(
             &br#"{
                      "staging": {
-                         "langtags": "test/",
+                         "langtags": "test/short/",
                          "sldr": "/staging/data/sldr/"
                      },
                      "production": {
                          "sendfile_method": "X-Accel-Redirect",
-                         "langtags": "test/",
+                         "langtags": "test/short/",
                          "sldr": "/data/sldr/"
                      }
                  }"#[..],
         )
-        .ok()
         .expect("Profiles value.");
+        let langtags_json = &br#"
+            [
+                {
+                    "regions": [ "AA", "AC", "AN", "AQ", "BU", "BV", "CP", "CS", "DD", "EU", "EZ", "FX", "GS", "HM", "NT", "QM", "QN", "QO", "QP", "QQ", "QR", "QS", "QT", "QU", "QV", "QW", "QX", "QY", "QZ", "SU", "TA", "TF", "TP", "UN", "XA", "XB", "XC", "XD", "XE", "XF", "XG", "XH", "XI", "XJ", "XL", "XM", "XN", "XO", "XP", "XQ", "XR", "XS", "XT", "XU", "XV", "XW", "XY", "XZ", "YD", "YU", "ZR", "ZZ" ],
+                    "scripts": [ "Aran", "Cpmn", "Egyd", "Egyh", "Hira", "Hrkt", "Inds", "Jamo", "Mero", "Moon", "Pcun", "Phlv", "Psin", "Qaaa", "Qaab", "Qaac", "Qaad", "Qaae", "Qaaf", "Qaag", "Qaah", "Qaai", "Qaaj", "Qaak", "Qaal", "Qaam", "Qaan", "Qaao", "Qaap", "Qaaq", "Qaar", "Qaas", "Qaat", "Qaau", "Qaav", "Qaaw", "Qaax", "Qaay", "Qaaz", "Qaba", "Qabb", "Qabc", "Qabd", "Qabe", "Qabf", "Qabg", "Qabh", "Qabi", "Qabj", "Qabk", "Qabl", "Qabm", "Qabn", "Qabo", "Qabp", "Qabq", "Qabr", "Qabs", "Qabt", "Qabu", "Qabv", "Qabw", "Qabx", "Roro", "Shui", "Syre", "Syrn", "Visp", "Zinh", "Zmth", "Zsye", "Zsym" ],
+                    "tag": "_conformance"
+                },
+                {
+                    "tag": "_globalvar",
+                    "variants": [ "simple" ]
+                },
+                {
+                    "tag": "_phonvar",
+                    "variants": [ "alalc97", "fonipa", "fonkirsh", "fonnapa", "fonupa", "fonxsamp" ]
+                },
+                {
+                    "api": "1.3",
+                    "date": "2023-02-20",
+                    "tag": "_version"
+                },
+                {
+                    "full": "aa-Latn-ET",
+                    "iana": [ "Afar" ],
+                    "iso639_3": "aar",
+                    "localname": "Qafar",
+                    "localnames": [ "Qafar af" ],
+                    "name": "Afar",
+                    "region": "ET",
+                    "regionname": "Ethiopia",
+                    "script": "Latn",
+                    "sldr": true,
+                    "tag": "aa",
+                    "tags": [ "aa-ET", "aa-Latn" ],
+                    "windows": "aa-Latn-ET"
+                },
+                {
+                    "full": "aa-Arab-ET",
+                    "iana": [ "Afar" ],
+                    "iso639_3": "aar",
+                    "name": "Afar",
+                    "nophonvars": true,
+                    "region": "ET",
+                    "regionname": "Ethiopia",
+                    "regions": [ "DJ", "ER" ],
+                    "script": "Arab",
+                    "sldr": false,
+                    "tag": "aa-Arab",
+                    "windows": "aa-Arab-ET"
+                },
+                {
+                    "full": "aa-Latn-DJ",
+                    "iana": [ "Afar" ],
+                    "iso639_3": "aar",
+                    "localname": "Qafar",
+                    "localnames": [ "Qafar af" ],
+                    "name": "Afar",
+                    "region": "DJ",
+                    "regionname": "Djibouti",
+                    "script": "Latn",
+                    "sldr": true,
+                    "tag": "aa-DJ",
+                    "windows": "aa-Latn-DJ"
+                },
+                {
+                    "full": "aa-Latn-ER",
+                    "iana": [ "Afar" ],
+                    "iso639_3": "aar",
+                    "localname": "Qafar",
+                    "localnames": [ "Qafar af" ],
+                    "name": "Afar",
+                    "region": "ER",
+                    "regionname": "Eritrea",
+                    "script": "Latn",
+                    "sldr": true,
+                    "tag": "aa-ER",
+                    "windows": "aa-Latn-ER"
+                },
+                {
+                    "full": "aa-Ethi-ET",
+                    "iana": [ "Afar" ],
+                    "iso639_3": "aar",
+                    "name": "Afar",
+                    "nophonvars": true,
+                    "region": "ET",
+                    "regionname": "Ethiopia",
+                    "regions": [ "DJ", "ER" ],
+                    "script": "Ethi",
+                    "sldr": false,
+                    "tag": "aa-Ethi",
+                    "windows": "aa-Ethi-ET"
+                }
+            ]"#[..];
         let mut expected = Profiles::new();
         expected.insert(
             "production".into(),
             Arc::new(Config {
                 sendfile_method: Some("X-Accel-Redirect".into()),
-                langtags: LangTags::from_reader(
-                    &br#"*aa = *aa-ET = aa-Latn = aa-Latn-ET
-                                     aa-Arab = aa-Arab-ET"#[..],
-                )
-                .expect("test production langtags"),
-                langtags_dir: "test/".into(),
+                langtags: LangTags::from_reader(langtags_json)
+                    .expect("LangTags production test case."),
+                langtags_dir: "test/short/".into(),
                 sldr_dir: "/data/sldr/".into(),
             }),
         );
@@ -166,12 +252,9 @@ mod tests {
             "staging".into(),
             Arc::new(Config {
                 sendfile_method: None,
-                langtags: LangTags::from_reader(
-                    &br#"*aa = *aa-ET = aa-Latn = aa-Latn-ET
-                                     aa-Arab = aa-Arab-ET"#[..],
-                )
-                .expect("test staging langtags"),
-                langtags_dir: "test/".into(),
+                langtags: LangTags::from_reader(langtags_json)
+                    .expect("LangTags staging test case."),
+                langtags_dir: "test/short/".into(),
                 sldr_dir: "/staging/data/sldr/".into(),
             }),
         );

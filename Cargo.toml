@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "language-tag",
+    "langtags",
 ]
 
 [package]
@@ -11,23 +12,27 @@ license = "GPLv3"
 readme = "README.md"
 version = "0.0.0"
 authors = ["Tim Eves <tim_eves@sil.org>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
-axum = { version = "0.4", features = ["headers"]}
-clap = { version = "3.1.6", features = ["derive"] }
+axum = { version = "~0.6.0", features = ["headers", "http2"]}
+clap = { version = "~4.3", features = ["derive"] }
+hyper = { version = "~0.14" }
 #console-subscriber = "0"
-language-tag = { version = "0.0", path = "./language-tag" }
-# We need to use upstream repo until space leak fix is released.
+futures ="0.3"
+langtags = { version = "~0", path = "./langtags" }
+language-tag = { version = "~0", path = "./language-tag" }
+# We need to use upstream repo until space leak fix is released. version > 0.3.1
 libxml = { git = "https://github.com/KWARC/rust-libxml"}
-mime = "0.3"
 mime_guess = "2.0"
-serde = { version = "1.0", features = ["derive"] }
+rand = "0.8.5"
+serde = { version = "~1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_with = "1.12"
+serde_with = "~3.0"
 serde_urlencoded = "0.7"
-tokio = { version = "1.15", features= ["full"] }
-tokio-util = "0.7"
+tokio = { version = "~1.28", features= ["full"] }
+tokio-util = "~0.7"
 tracing = "0.1"
 tracing-subscriber = { version="0.3", features = ["env-filter"] }
-tower-http = { version = "0.2.3", features = ["fs", "trace"] }
+tower = "0.4"
+tower-http = { version = "~0.4", features = ["compression-deflate", "compression-gzip", "compression-zstd","fs", "trace"] }
