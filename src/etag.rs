@@ -1,5 +1,5 @@
 use axum::{
-    headers::{ETag, HeaderMapExt, IfNoneMatch},
+    headers::{ETag, Header, HeaderMapExt, IfNoneMatch},
     http::{Request, StatusCode},
     middleware::Next,
     response::Response,
@@ -42,11 +42,12 @@ pub fn from_metadata(path: &Path) -> Option<ETag> {
 
 pub mod revid {
     use axum::{
-        extract::{FromRequest, Query, RequestParts},
+        extract::Query,
         headers::{ETag, HeaderMapExt, IfNoneMatch},
         http::{Request, StatusCode},
         middleware::Next,
         response::{IntoResponse, Response},
+        RequestExt,
     };
     use serde::Deserialize;
     use std::{
@@ -62,9 +63,8 @@ pub mod revid {
     }
 
     impl Param {
-        fn into_header(&self) -> Result<Option<IfNoneMatch>, StatusCode> {
+        fn into_header(self) -> Result<Option<IfNoneMatch>, StatusCode> {
             self.revid
-                .as_ref()
                 .map(|id| {
                     format!("\"{id}\"")
                         .parse::<ETag>()

@@ -1,10 +1,10 @@
 use axum::{
     body::StreamBody,
     extract::{Extension, Path, Query, State},
-    headers::HeaderMapExt,
-    http::{header, HeaderMap, HeaderValue, Request, StatusCode},
+    headers::{ContentType, HeaderMapExt},
+    http::{header::CONTENT_DISPOSITION, HeaderMap, Request, StatusCode},
     middleware::{self, Next},
-    response::{Headers, Html, IntoResponse, Redirect, Response},
+    response::{Html, IntoResponse, Redirect, Response},
     routing::get,
     Router,
 };
@@ -59,7 +59,7 @@ struct Args {
     listen: SocketAddr,
 }
 
-#[tokio::main]
+#[tokio::main()]
 async fn main() -> io::Result<()> {
     //console_subscriber::init();
     // Set the RUST_LOG, if it hasn't been explicitly defined
@@ -138,22 +138,16 @@ async fn stream_file_as(
     path: &path::Path,
     filename: &path::Path,
 ) -> Result<impl IntoResponse, Response> {
-    let guess = mime_guess::from_path(filename);
-    let mime = guess.first_or_octet_stream();
-    let headers = Headers([
-        (
-            header::CONTENT_TYPE,
-            HeaderValue::from_str(mime.as_ref()).expect("failed to parse mimetype"),
-        ),
-        (
-            header::CONTENT_DISPOSITION,
-            HeaderValue::from_str(&format!(
-                "attachment; filename=\"{name}\"",
-                name = filename.to_string_lossy()
-            ))
-            .expect("failed to parse Content-Disposition header value"),
-        ),
-    ]);
+    let mime = mime_guess::from_path(filename).first_or_octet_stream();
+    let disposition = format!(
+        "attachment; filename=\"{name}\"",
+        name = filename.to_string_lossy()
+    )
+    .parse()
+    .expect("failed to parse Content-Disposition header value");
+    let mut headers = HeaderMap::new();
+    headers.typed_insert(ContentType::from(mime));
+    headers.insert(CONTENT_DISPOSITION, disposition);
     let file = fs::File::open(path).await.map_err(|err| {
         (
             StatusCode::NOT_FOUND,
