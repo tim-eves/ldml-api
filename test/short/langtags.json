@@ -1,0 +1,91 @@
+[
+    {
+        "regions": [ "AA", "AC", "AN", "AQ", "BU", "BV", "CP", "CS", "DD", "EU", "EZ", "FX", "GS", "HM", "NT", "QM", "QN", "QO", "QP", "QQ", "QR", "QS", "QT", "QU", "QV", "QW", "QX", "QY", "QZ", "SU", "TA", "TF", "TP", "UN", "XA", "XB", "XC", "XD", "XE", "XF", "XG", "XH", "XI", "XJ", "XL", "XM", "XN", "XO", "XP", "XQ", "XR", "XS", "XT", "XU", "XV", "XW", "XY", "XZ", "YD", "YU", "ZR", "ZZ" ],
+        "scripts": [ "Aran", "Cpmn", "Egyd", "Egyh", "Hira", "Hrkt", "Inds", "Jamo", "Mero", "Moon", "Pcun", "Phlv", "Psin", "Qaaa", "Qaab", "Qaac", "Qaad", "Qaae", "Qaaf", "Qaag", "Qaah", "Qaai", "Qaaj", "Qaak", "Qaal", "Qaam", "Qaan", "Qaao", "Qaap", "Qaaq", "Qaar", "Qaas", "Qaat", "Qaau", "Qaav", "Qaaw", "Qaax", "Qaay", "Qaaz", "Qaba", "Qabb", "Qabc", "Qabd", "Qabe", "Qabf", "Qabg", "Qabh", "Qabi", "Qabj", "Qabk", "Qabl", "Qabm", "Qabn", "Qabo", "Qabp", "Qabq", "Qabr", "Qabs", "Qabt", "Qabu", "Qabv", "Qabw", "Qabx", "Roro", "Shui", "Syre", "Syrn", "Visp", "Zinh", "Zmth", "Zsye", "Zsym" ],
+        "tag": "_conformance"
+    },
+    {
+        "tag": "_globalvar",
+        "variants": [ "simple" ]
+    },
+    {
+        "tag": "_phonvar",
+        "variants": [ "alalc97", "fonipa", "fonkirsh", "fonnapa", "fonupa", "fonxsamp" ]
+    },
+    {
+        "api": "1.3",
+        "date": "2023-02-20",
+        "tag": "_version"
+    },
+    {
+        "full": "aa-Latn-ET",
+        "iana": [ "Afar" ],
+        "iso639_3": "aar",
+        "localname": "Qafar",
+        "localnames": [ "Qafar af" ],
+        "name": "Afar",
+        "region": "ET",
+        "regionname": "Ethiopia",
+        "script": "Latn",
+        "sldr": true,
+        "tag": "aa",
+        "tags": [ "aa-ET", "aa-Latn" ],
+        "windows": "aa-Latn-ET"
+    },
+    {
+        "full": "aa-Arab-ET",
+        "iana": [ "Afar" ],
+        "iso639_3": "aar",
+        "name": "Afar",
+        "nophonvars": true,
+        "region": "ET",
+        "regionname": "Ethiopia",
+        "regions": [ "DJ", "ER" ],
+        "script": "Arab",
+        "sldr": false,
+        "tag": "aa-Arab",
+        "windows": "aa-Arab-ET"
+    },
+    {
+        "full": "aa-Latn-DJ",
+        "iana": [ "Afar" ],
+        "iso639_3": "aar",
+        "localname": "Qafar",
+        "localnames": [ "Qafar af" ],
+        "name": "Afar",
+        "region": "DJ",
+        "regionname": "Djibouti",
+        "script": "Latn",
+        "sldr": true,
+        "tag": "aa-DJ",
+        "windows": "aa-Latn-DJ"
+    },
+    {
+        "full": "aa-Latn-ER",
+        "iana": [ "Afar" ],
+        "iso639_3": "aar",
+        "localname": "Qafar",
+        "localnames": [ "Qafar af" ],
+        "name": "Afar",
+        "region": "ER",
+        "regionname": "Eritrea",
+        "script": "Latn",
+        "sldr": true,
+        "tag": "aa-ER",
+        "windows": "aa-Latn-ER"
+    },
+    {
+        "full": "aa-Ethi-ET",
+        "iana": [ "Afar" ],
+        "iso639_3": "aar",
+        "name": "Afar",
+        "nophonvars": true,
+        "region": "ET",
+        "regionname": "Ethiopia",
+        "regions": [ "DJ", "ER" ],
+        "script": "Ethi",
+        "sldr": false,
+        "tag": "aa-Ethi",
+        "windows": "aa-Ethi-ET"
+    }
+]
