@@ -77,10 +77,22 @@ async fn main() -> io::Result<()> {
         profiles = cfg.keys().collect::<Vec<_>>()
     );
 
-    async fn static_help() -> Html<&'static str> {
-        Html(include_str!("index.html"))
-    }
-    let app = Router::new()
+    // run it with hyper on localhost:3000
+    tracing::info!("listening on {addr}", addr = args.listen);
+    axum::Server::bind(&args.listen)
+        .serve(
+            app(cfg)?
+                .layer(CompressionLayer::new())
+                .layer(TraceLayer::new_for_http())
+                .into_make_service(),
+        )
+        .await
+        .unwrap();
+    Ok(())
+}
+
+fn app(cfg: Profiles) -> io::Result<Router> {
+    Ok(Router::new()
         .route("/langtags.:ext", get(langtags))
         .route(
             "/:ws_id",
@@ -88,22 +100,14 @@ async fn main() -> io::Result<()> {
                 .layer(middleware::from_fn(etag::layer))
                 .layer(middleware::from_fn(etag::revid::converter)),
         )
+        .layer(middleware::from_fn_with_state(cfg.into(), profile_selector))
         .route("/", get(query_only))
         .route("/index.html", get(static_help))
-        .layer(middleware::from_fn(move |req, next| {
-            profile_selector(cfg.into(), req, next)
-        }))
-        .layer(CompressionLayer::new())
-        .layer(TraceLayer::new_for_http());
+        .fallback(static_help))
+}
 
-    // run it with hyper on localhost:3000
-    // let addr = "0.0.0.0:3000".parse().expect("localhost listening address");
-    tracing::info!("listening on {addr}", addr = args.listen);
-    axum::Server::bind(&args.listen)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
-    Ok(())
+async fn static_help() -> impl IntoResponse {
+    Html(include_str!("index.html"))
 }
 
 async fn profile_selector<B>(
@@ -324,4 +328,95 @@ async fn ldml_subset(path: &path::Path, xpaths: &str) -> Result<impl IntoRespons
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
         Ok(doc.to_string())
     })
+}
+
+#[cfg(test)]
+mod test {
+    use crate::find_ldml_file;
+
+    use super::{app, config, Profiles, Tag};
+    use axum::{
+        body::Body,
+        http::{Request, StatusCode},
+        Router,
+    };
+    use std::str::FromStr;
+    use std::{
+        fs::File,
+        io::{BufRead, BufReader},
+    };
+    use tower::{Service, ServiceExt}; // for `oneshot` and `ready`
+
+    fn get_profiles() -> &'static Profiles {
+        use std::sync::OnceLock;
+        static SHARED_PROFILES: OnceLock<Profiles> = OnceLock::new();
+        SHARED_PROFILES.get_or_init(|| {
+            config::profiles::from("./ldml-api.json", "production").expect("test config")
+        })
+    }
+
+    fn get_app() -> Router {
+        app(get_profiles().clone()).expect("Router")
+    }
+
+    #[tokio::test]
+    async fn index_page() {
+        let mut app = get_app();
+
+        let response = app
+            .call(
+                Request::builder()
+                    .uri("/index.html")
+                    .body(Body::empty())
+                    .expect("Request"),
+            )
+            .await
+            .expect("Response");
+
+        let fallback_response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/")
+                    .body(Body::empty())
+                    .expect("Request"),
+            )
+            .await
+            .expect("Response");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(fallback_response.status(), StatusCode::TEMPORARY_REDIRECT);
+
+        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        assert_eq!(&body[..], include_str!("index.html").as_bytes());
+    }
+
+    async fn request_ldml_file(tag: &Tag) -> StatusCode {
+        let app = get_app();
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri(format!("/{tag}"))
+                    .body(Body::empty())
+                    .expect("Request"),
+            )
+            .await
+            .expect("Response");
+
+        response.status()
+    }
+
+
+    #[tokio::test]
+    async fn simple_writing_system_request() {
+        assert_eq!(
+            request_ldml_file(&Tag::from_str("en-US").expect("Tag")).await,
+            StatusCode::OK
+        );
+        assert_eq!(
+            request_ldml_file(&Tag::from_str("en-KP").expect("Tag")).await,
+            StatusCode::NOT_FOUND
+        );
+    }
+
 }

@@ -74,7 +74,6 @@ impl Document {
 
 impl ToString for Document {
     fn to_string(&self) -> String {
-        // Default::default()
         self.inner.to_string_with_options(SaveOptions {
             format: true,
             no_empty_tags: true,
