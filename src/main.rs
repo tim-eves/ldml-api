@@ -177,41 +177,45 @@ async fn langtags(
     stream_file(&cfg.langtags_dir.join("langtags").with_extension(ext)).await
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
 enum LDMLQuery {
     AllTags,
     LangTags,
+    Tags,
 }
 
 #[derive(Deserialize)]
 struct QueryParams {
-    query: LDMLQuery,
+    _ws_id: Option<Tag>,
+    query: Option<LDMLQuery>,
     ext: Option<String>,
 }
 
 async fn query_only(Query(params): Query<QueryParams>) -> impl IntoResponse {
     match params.query {
-        LDMLQuery::AllTags => Err((
+        Some(LDMLQuery::AllTags) => Err((
             StatusCode::NOT_FOUND,
             "LDML SERVER ERROR: The alltags file is obsolete. Please use 'query=langtags'.",
         )),
-        LDMLQuery::LangTags => {
+        Some(LDMLQuery::LangTags) => {
             let ext = params.ext.as_deref().unwrap_or("txt");
-            Ok(Redirect::permanent(
-                format!("/langtags.{ext}")
-                    .parse()
-                    .expect("langtags relative path"),
-            ))
+            Ok(Redirect::permanent(&format!("/langtags.{ext}")))
         }
+        Some(LDMLQuery::Tags) => Err((
+            StatusCode::BAD_REQUEST,
+            "LDML SERVER ERROR: query=tags requires a ws_id",
+        )),
+        None => Ok(Redirect::temporary("/index.html")),
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 struct WSParams {
-    query: Option<String>,
+    query: Option<LDMLQuery>,
     ext: Option<String>,
     flatten: Option<Toggle>,
+    #[serde(rename = "inc[]")]
     inc: Option<String>,
     revid: Option<String>,
     uid: Option<u32>,
@@ -239,7 +243,7 @@ async fn fetch_writing_system_ldml(ws: &Tag, params: WSParams, cfg: &Config) -> 
     if let Some(tag) = etag {
         headers.typed_insert(tag);
     }
-    if let Some(xpaths) = xpaths {
+    if let Some(xpaths) = params.inc {
         ldml_subset(path.as_ref(), &xpaths)
             .await
             .map(IntoResponse::into_response)
@@ -269,8 +273,15 @@ async fn demux_writing_system(
     Extension(cfg): Extension<Arc<Config>>,
 ) -> impl IntoResponse {
     tracing::debug!("language tag {ws:?}");
-    if let Some("tags") = params.query.as_deref() {
-        writing_system_tags(&ws, &cfg).await.into_response()
+    if let Some(query) = params.query {
+        match query {
+            LDMLQuery::AllTags | LDMLQuery::LangTags => (
+                StatusCode::BAD_REQUEST,
+                "query=alltags is only valid without a ws_id.",
+            )
+                .into_response(),
+            LDMLQuery::Tags => writing_system_tags(&ws, &cfg).await.into_response(),
+        }
     } else {
         fetch_writing_system_ldml(&ws, params, &cfg)
             .await
