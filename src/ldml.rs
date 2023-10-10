@@ -88,7 +88,7 @@ impl ToString for Document {
     fn to_string(&self) -> String {
         self.inner.to_string_with_options(SaveOptions {
             format: true,
-            no_empty_tags: true,
+            no_empty_tags: false,
             no_xhtml: true,
             non_significant_whitespace: true,
             ..Default::default()
@@ -156,11 +156,11 @@ CLDR data files are interpreted according to the LDML specification (http://unic
 -->
 <ldml>
   <identity>
-    <version number="$Revision$"></version>
-    <language type="en"></language>
-    <territory type="US"></territory>
+    <version number="$Revision$"/>
+    <language type="en"/>
+    <territory type="US"/>
     <special xmlns:sil="urn://www.sil.org/ldml/0.1">
-      <sil:identity defaultRegion="US" revid="b83dea0b8c92193966b10b85c823a22479d1c3ed" script="Latn" source="cldr"></sil:identity>
+      <sil:identity defaultRegion="US" revid="b83dea0b8c92193966b10b85c823a22479d1c3ed" script="Latn" source="cldr"/>
     </special>
   </identity>
   <layout>
