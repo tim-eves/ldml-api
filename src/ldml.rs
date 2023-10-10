@@ -70,6 +70,18 @@ impl Document {
         }
         Ok(())
     }
+
+    pub fn set_uid(&mut self, uid: u32) -> Result<(), String> {
+        let mut ctxt = self.get_context().ok_or("XPath context creation failed")?;
+        let mut nodes = ctxt
+            .findnodes("//sil:identity", None)
+            .or(Err("XPath evalution failed"))?;
+        let silident = nodes.first_mut().ok_or("sil::identity node not found")?;
+        silident
+            .set_attribute("uid", &uid.to_string())
+            .map_err(|err| format!("Failed to set uid attribute: {err}"))?;
+        Ok(())
+    }
 }
 
 impl ToString for Document {
@@ -103,6 +115,16 @@ mod test {
             .expect("revid not found");
 
         assert_eq!(revid, "b83dea0b8c92193966b10b85c823a22479d1c3ed");
+    }
+
+    #[test]
+    fn update_uid() {
+        let mut doc = Document::new("test/en_US.xml").expect("LDML failed parse.");
+        doc.set_uid(012345678).expect("uid update failed.");
+        let uid = doc
+            ._findvalue("//sil:identity/@uid")
+            .expect("uid attribute not found.");
+        assert_eq!(uid, "12345678");
     }
 
     #[test]

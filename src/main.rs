@@ -23,9 +23,9 @@ use tower_http::{compression::CompressionLayer, trace::TraceLayer};
 
 mod config;
 mod etag;
-mod langtags;
 mod ldml;
 mod toggle;
+mod unique_id;
 
 /*
 /<ws_id>                => /<ws_id> [Accept:application/x.vnd.sil.ldml.v2+xml]
@@ -43,6 +43,7 @@ mod toggle;
 use config::{Config, Profiles};
 use langtags::json::LangTags;
 use toggle::Toggle;
+use unique_id::UniqueID;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -218,8 +219,7 @@ struct WSParams {
     flatten: Option<Toggle>,
     #[serde(rename = "inc[]")]
     inc: Option<String>,
-    revid: Option<String>,
-    uid: Option<u32>,
+    uid: Option<UniqueID>,
 }
 
 async fn writing_system_tags(ws: &Tag, cfg: &Config) -> impl IntoResponse {
@@ -244,11 +244,7 @@ async fn fetch_writing_system_ldml(ws: &Tag, params: WSParams, cfg: &Config) -> 
     if let Some(tag) = etag {
         headers.typed_insert(tag);
     }
-    if let Some(xpaths) = params.inc {
-        ldml_subset(path.as_ref(), &xpaths)
-            .await
-            .map(IntoResponse::into_response)
-    } else {
+    if params.inc.is_none() && params.uid.is_none() {
         stream_file_as(
             path.as_ref(),
             path.with_extension(ext)
@@ -264,6 +260,10 @@ async fn fetch_writing_system_ldml(ws: &Tag, params: WSParams, cfg: &Config) -> 
         )
         .await
         .map(IntoResponse::into_response)
+    } else {
+        ldml_customisation(path.as_ref(), params.inc, params.uid)
+            .await
+            .map(IntoResponse::into_response)
     }
     .map(|resp| (headers, resp))
 }
@@ -331,13 +331,23 @@ fn find_ldml_file(ws: &Tag, sldr_dir: &path::Path, langtags: &LangTags) -> Optio
         .rfind(|path| path.exists())
 }
 
-async fn ldml_subset(path: &path::Path, xpaths: &str) -> Result<impl IntoResponse, Response> {
+async fn ldml_customisation(
+    path: &path::Path,
+    xpaths: Option<String>,
+    uid: Option<UniqueID>,
+) -> Result<impl IntoResponse, Response> {
     task::block_in_place(|| {
-        let xpaths = xpaths.split(',').collect::<Vec<_>>();
-        let mut doc = ldml::Document::new(&path)
+        let mut doc = ldml::Document::new(path)
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
-        doc.subset(&xpaths)
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
+        if let Some(xpaths) = xpaths {
+            let xpaths = xpaths.split(',').collect::<Vec<_>>();
+            doc.subset(&xpaths)
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
+        }
+        if let Some(uid) = uid {
+            doc.set_uid(*uid)
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
+        }
         Ok(doc.to_string())
     })
 }
