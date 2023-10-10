@@ -1,7 +1,7 @@
 use axum::{
     body::StreamBody,
     extract::{Extension, Path, Query, State},
-    headers::{ContentType, HeaderMapExt},
+    headers::{ContentType, ETag, HeaderMapExt},
     http::{header::CONTENT_DISPOSITION, HeaderMap, Request, StatusCode},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
@@ -165,6 +165,9 @@ async fn stream_file_as(
         )
             .into_response()
     })?;
+    if let Some(etag) = etag::from_metadata(path) {
+        headers.typed_insert(etag);
+    }
     let stream = tokio_util::io::ReaderStream::with_capacity(file, 1 << 14); // 16KiB buffer
     let body = StreamBody::new(stream);
 
@@ -261,6 +264,9 @@ async fn fetch_writing_system_ldml(ws: &Tag, params: WSParams, cfg: &Config) -> 
         .await
         .map(IntoResponse::into_response)
     } else {
+        if let Some(etag) = headers.typed_get::<ETag>() {
+            headers.typed_insert(etag::weaken(etag))
+        }
         ldml_customisation(path.as_ref(), params.inc, params.uid)
             .await
             .map(IntoResponse::into_response)

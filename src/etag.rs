@@ -40,6 +40,18 @@ pub fn from_metadata(path: &Path) -> Option<ETag> {
     token.parse::<ETag>().ok()
 }
 
+#[inline]
+pub fn weaken(etag: ETag) -> ETag {
+    let mut header = vec![];
+    etag.encode(&mut header);
+    format!(
+        "\"W/{tag}",
+        tag = &header[0].to_str().unwrap_or_default()[1..]
+    )
+    .parse()
+    .unwrap_or(etag)
+}
+
 pub mod revid {
     use axum::{
         extract::Query,
@@ -75,30 +87,22 @@ pub mod revid {
         }
     }
 
-    pub async fn converter<B>(req: Request<B>, next: Next<B>) -> Result<Response, Response>
+    pub async fn converter<B>(mut req: Request<B>, next: Next<B>) -> Result<Response, Response>
     where
-        B: Send,
+        B: Send + 'static,
     {
-        let mut parts = RequestParts::new(req);
-        let header = Query::<Param>::from_request(&mut parts)
+        let header = req
+            .extract_parts::<Query<Param>>()
             .await
             .map_err(|e| e.into_response())
             .and_then(|Query(param)| param.into_header().map_err(|e| e.into_response()))?;
+
         if let Some(header) = header {
             tracing::info!("converted revid to {header:?}");
-            parts
-                .headers_mut()
-                .expect("Headers already extracted")
-                .typed_insert(header);
+            req.headers_mut().typed_insert(header);
         }
 
-        Ok(next
-            .run(
-                parts
-                    .try_into_request()
-                    .expect("failed to assemble request"),
-            )
-            .await)
+        Ok(next.run(req).await)
     }
 
     pub fn from_ldml(path: &Path) -> Option<ETag> {
