@@ -304,16 +304,16 @@ fn query_tags(ws: &Tag, langtags: &LangTags) -> Option<String> {
 
 fn find_ldml_file(ws: &Tag, sldr_dir: &path::Path, langtags: &LangTags) -> Option<path::PathBuf> {
     // Lookup the tag set and generate a prefered sorted list.
-    let mut tagset: Vec<_> = langtags.get(ws)?.iter().collect();
-    tagset.sort();
-    tagset.push(ws);
+    let tagset = langtags.orthographic_normal_form(ws)?;
+    let tags: Vec<_> = tagset.iter().collect();
 
-    tagset
-        .iter()
+    let mut path = sldr_dir.to_path_buf();
+    path.push(&tagset.lang()[0..1]);
+
+    tags.iter()
         .map(|&tag| {
-            let mut path = path::PathBuf::from(sldr_dir);
-            path.push(&tag.lang[0..1]);
-            path.push(tag.to_string().replace("-", "_"));
+            let mut path = path.clone();
+            path.push(tag.to_string().replace('-', "_"));
             path.with_extension("xml")
         })
         .rfind(|path| path.exists())
@@ -453,4 +453,21 @@ mod test {
         );
     }
 
+    #[test]
+    fn palaso_writing_systems_list() {
+        let tags = BufReader::new(File::open("test/palaso-tag.list").expect("tag list"))
+            .lines()
+            .map(|l| Tag::from_str(&l.expect("Read line")).expect("Tag"));
+        let cfg = &get_profiles()["production"];
+        let sldr_path = &cfg.sldr_path(true);
+        for (l, tag) in tags.enumerate() {
+            let status = find_ldml_file(&tag, sldr_path, &cfg.langtags);
+            assert!(
+                status.is_some(),
+                "Tag {tag} at line {line}: not found",
+                line = l + 1
+            );
+            println!("{tag} => {path}", path = status.unwrap().to_string_lossy());
+        }
+    }
 }
