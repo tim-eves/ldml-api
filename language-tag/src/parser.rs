@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use super::Tag;
 
 extern crate nom;
@@ -12,7 +14,10 @@ use nom::{
     IResult,
 };
 
-pub use nom::{error::{Error, ErrorKind}, Finish};
+pub use nom::{
+    error::{Error, ErrorKind},
+    Finish,
+};
 
 fn dash<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, char, E> {
     char('-')(input)
@@ -65,13 +70,13 @@ where
     V: Into<Option<&'static str>>,
 {
     value(
-        Tag::new(
+        Tag::from_parts(
             lang.into().unwrap_or(name),
             None,
-            region,
+            region.into(),
             variant.into(),
             None,
-            None
+            None,
         ),
         tag(name),
     )
@@ -111,7 +116,7 @@ where
     let terminator = not(peek(verify(anychar, |c| {
         *c == '-' || c.is_ascii_alphanumeric()
     })));
-    let (input, tags) = terminated(
+    let (rest, mut tags) = terminated(
         tuple((
             context("language code", language),
             context("script code", opt(script)),
@@ -122,15 +127,18 @@ where
         )),
         terminator,
     )(input)?;
+    tags.3.sort_unstable();
+    tags.4.sort_unstable();
     Ok((
-        input,
+        rest,
         Tag::new(
-            tags.0,
-            tags.1,
-            tags.2,
-            tags.3,
-            tags.4,
-            tags.5,
+            &input[..input.len() - rest.len()],
+            tags.0.len(),
+            tags.1.and_then(|r| r.len().try_into().ok()),
+            tags.2.and_then(|r| r.len().try_into().ok()),
+            tags.3.into_iter().map(|v| v.len().try_into().unwrap()),
+            tags.4.into_iter().map(|e| e.len().try_into().unwrap()),
+            tags.5.and_then(|r| r.len().try_into().ok()),
         ),
     ))
 }
@@ -140,10 +148,7 @@ where
     E: ParseError<&'a str> + ContextError<&'a str>,
 {
     let (input, pu) = context("private use tag", private)(input)?;
-    Ok((
-        input,
-        Tag::privateuse(pu)
-    ))
+    Ok((input, Tag::privateuse(pu)))
 }
 
 fn grandfathered_regular<'a, E>(input: &'a str) -> IResult<&'a str, Tag, E>
@@ -206,7 +211,21 @@ where
     ))(input)
 }
 
-mod tests {
+impl FromStr for Tag {
+    type Err = Error<String>;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match languagetag(s).finish() {
+            Ok((_, tag)) => Ok(tag),
+            Err(Error { input, code }) => Err(Self::Err {
+                input: input.to_owned(),
+                code,
+            }),
+        }
+    }
+}
+
+mod test {
     #[test]
     fn grandfathered() {
         use crate::Tag;
@@ -216,7 +235,11 @@ mod tests {
             ("cel-gaulish", Ok(Tag::with_lang("cel-gaulish"))),
             (
                 "en-GB-oed",
-                Ok(Tag::builder().lang("en").region("GB").variant("oxendict").build()),
+                Ok(Tag::builder()
+                    .lang("en")
+                    .region("GB")
+                    .variant("oxendict")
+                    .build()),
             ),
             ("i-ami", Ok(Tag::with_lang("ami"))),
             ("i-bnn", Ok(Tag::with_lang("bnn"))),
@@ -243,7 +266,8 @@ mod tests {
             ("zh-xiang", Ok(Tag::with_lang("hsn"))),
         ];
         for (test, result) in &gf_cases {
-            assert_eq!(test.parse::<Tag>(), *result);
+            let test = test.parse::<Tag>();
+            assert_eq!(test, *result);
         }
     }
 
@@ -268,7 +292,11 @@ mod tests {
             ("en-us", Ok(Tag::builder().lang("en").region("us").build())),
             (
                 "en-Latn-US",
-                Ok(Tag::builder().lang("en").script("Latn").region("US").build()),
+                Ok(Tag::builder()
+                    .lang("en")
+                    .script("Latn")
+                    .region("US")
+                    .build()),
             ),
             (
                 "ca-valencia",
@@ -276,7 +304,8 @@ mod tests {
             ),
             (
                 "en-Latn-US-2abc-3cde-a2c3e-xwhat-x-priv2",
-                Ok(Tag::builder().lang("en")
+                Ok(Tag::builder()
+                    .lang("en")
                     .script("Latn")
                     .region("US")
                     .variants(["2abc", "3cde", "a2c3e", "xwhat"])
@@ -285,7 +314,8 @@ mod tests {
             ),
             (
                 "en-aaa-ccc-Latn-US-2abc-what2-a-bable-q-babbel-x-priv1",
-                Ok(Tag::builder().lang("en-aaa-ccc")
+                Ok(Tag::builder()
+                    .lang("en-aaa-ccc")
                     .script("Latn")
                     .region("US")
                     .variants(["2abc", "what2"])

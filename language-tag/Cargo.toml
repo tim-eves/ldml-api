@@ -1,12 +1,12 @@
 [package]
 name = "language-tag"
-description = "Language Tags"
-keywords = ["langtag", "web", "language", "metadat"]
+description = "Language Tag type"
+keywords = ["langtag", "web", "language", "metadata"]
 license = "GPLv3"
 readme = "README.md"
-version = "0.0.1"
+version = "0.2.0"
 authors = ["Tim Eves <tim_eves@sil.org>"]
-edition = "2018"
+edition = "2021"
 
 [lib]
 
