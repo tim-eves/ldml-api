@@ -1,5 +1,5 @@
 use langtags::json::LangTags;
-use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 #[derive(Debug, PartialEq)]
 pub struct Config {
@@ -15,7 +15,7 @@ impl Config {
     }
 }
 
-pub type Profiles = BTreeMap<String, Arc<Config>>;
+pub type Profiles = HashMap<String, Arc<Config>>;
 
 pub mod profiles {
     use super::{Config, LangTags, Profiles};
@@ -24,27 +24,32 @@ pub mod profiles {
         fs::File,
         io::{self, BufReader, Read},
         path::{Path, PathBuf},
-        sync::Arc,
     };
 
-    pub fn from<P>(path: P) -> io::Result<Arc<Profiles>>
+    pub fn from<P, S>(path: P, default: S) -> io::Result<Profiles>
     where
         P: AsRef<Path>,
+        S: AsRef<str>,
     {
-        from_reader(File::open(path)?)
+        let mut profiles = from_reader(File::open(path)?)?;
+        let default = default.as_ref();
+        if !default.is_empty() {
+            profiles.insert("".into(), profiles[default].clone());
+        }
+        Ok(profiles)
     }
 
     fn into_parse_error(msg: &str) -> io::Error {
         io::Error::new(io::ErrorKind::InvalidData, format!("parse failed: {msg}"))
     }
 
-    pub fn from_reader<R: Read>(reader: R) -> io::Result<Arc<Profiles>> {
+    pub fn from_reader<R: Read>(reader: R) -> io::Result<Profiles> {
         let cfg: Value = serde_json::from_reader(reader)?;
 
         let profiles = cfg
             .as_object()
             .ok_or_else(|| into_parse_error("profile map"))?;
-        let mut configs = Profiles::new();
+        let mut configs = Profiles::with_capacity(profiles.len());
         // Read defined profiles
         for (name, v) in profiles.iter() {
             let mut sendfile_method = Default::default();
@@ -74,16 +79,17 @@ pub mod profiles {
 
             configs.insert(
                 name.to_owned(),
-                Arc::new(Config {
+                Config {
                     sendfile_method,
                     langtags,
                     langtags_dir,
                     sldr_dir,
-                }),
+                }
+                .into(),
             );
         }
 
-        Ok(Arc::new(configs))
+        Ok(configs)
     }
 }
 
@@ -93,7 +99,7 @@ mod test {
 
     #[test]
     fn missing_config() {
-        let res = profiles::from("test/missing-config.json");
+        let res = profiles::from("test/missing-config.json", "");
         assert_eq!(
             res.err().expect("io::Error: Not found.").kind(),
             std::io::ErrorKind::NotFound
@@ -250,15 +256,16 @@ mod test {
         );
         expected.insert(
             "staging".into(),
-            Arc::new(Config {
+            Config {
                 sendfile_method: None,
                 langtags: LangTags::from_reader(langtags_json)
                     .expect("LangTags staging test case."),
                 langtags_dir: "test/short/".into(),
                 sldr_dir: "/staging/data/sldr/".into(),
-            }),
+            }
+            .into(),
         );
 
-        assert_eq!(*res, expected);
+        assert_eq!(res, expected);
     }
 }

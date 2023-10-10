@@ -1,6 +1,6 @@
 use axum::{
     body::StreamBody,
-    extract::{Extension, Path, Query},
+    extract::{Extension, Path, Query, State},
     headers::HeaderMapExt,
     http::{header, HeaderMap, HeaderValue, Request, StatusCode},
     middleware::{self, Next},
@@ -40,9 +40,9 @@ mod toggle;
 /?ws_id=<ws_id>                         => /<ws_id> [Accept:application/x.vnd.sil.ldml.v2+xml]
 */
 
-use crate::config::{Config, Profiles};
-use crate::langtags::LangTags;
-use crate::toggle::Toggle;
+use config::{Config, Profiles};
+use langtags::json::LangTags;
+use toggle::Toggle;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -69,10 +69,9 @@ async fn main() -> io::Result<()> {
     tracing_subscriber::fmt::init();
 
     let args = Args::parse();
-    let default_profile = Arc::new(args.profile);
 
     // Load configuraion
-    let cfg = config::profiles::from(args.config)?;
+    let cfg = config::profiles::from(&args.config, &args.profile)?;
     tracing::info!(
         "loaded profiles: {profiles:?}",
         profiles = cfg.keys().collect::<Vec<_>>()
@@ -92,7 +91,7 @@ async fn main() -> io::Result<()> {
         .route("/", get(query_only))
         .route("/index.html", get(static_help))
         .layer(middleware::from_fn(move |req, next| {
-            profile_selector(req, next, cfg.clone(), default_profile.clone())
+            profile_selector(cfg.into(), req, next)
         }))
         .layer(TraceLayer::new_for_http());
 
@@ -107,10 +106,9 @@ async fn main() -> io::Result<()> {
 }
 
 async fn profile_selector<B>(
+    State(profiles): State<Box<Profiles>>,
     mut req: Request<B>,
     next: Next<B>,
-    cfg: Arc<Profiles>,
-    default_profile: Arc<String>,
 ) -> Response {
     let staging = req
         .uri()
@@ -118,13 +116,13 @@ async fn profile_selector<B>(
         .and_then(|q| serde_urlencoded::from_str::<HashMap<String, Toggle>>(q).ok())
         .and_then(|qs| qs.get("staging").map(|t| **t))
         .unwrap_or(false);
-    let profile = if staging {
-        "staging"
+    let config = if staging {
+        profiles["staging"].clone()
     } else {
-        default_profile.as_str()
+        profiles[""].clone()
     };
-    tracing::debug!("using profile: {profile}");
-    req.extensions_mut().insert(cfg[profile].clone());
+
+    req.extensions_mut().insert(config);
     next.run(req).await
 }
 
