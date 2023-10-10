@@ -63,6 +63,7 @@ struct Args {
 async fn main() -> io::Result<()> {
     //console_subscriber::init();
     // Set the RUST_LOG, if it hasn't been explicitly defined
+    #[cfg(debug_assertions)]
     if std::env::var_os("RUST_LOG").is_none() {
         std::env::set_var("RUST_LOG", "ldml_api=debug,tower_http=debug")
     }
