@@ -19,7 +19,7 @@ use std::{
     sync::Arc,
 };
 use tokio::{fs, task};
-use tower_http::trace::TraceLayer;
+use tower_http::{compression::CompressionLayer, trace::TraceLayer};
 
 mod config;
 mod etag;
@@ -93,6 +93,7 @@ async fn main() -> io::Result<()> {
         .layer(middleware::from_fn(move |req, next| {
             profile_selector(cfg.into(), req, next)
         }))
+        .layer(CompressionLayer::new())
         .layer(TraceLayer::new_for_http());
 
     // run it with hyper on localhost:3000
