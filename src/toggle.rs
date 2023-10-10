@@ -28,7 +28,7 @@ impl FromStr for Toggle {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::Toggle;
 
     #[test]

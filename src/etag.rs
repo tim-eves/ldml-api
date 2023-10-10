@@ -4,7 +4,11 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use std::{fs, hash::{Hash, Hasher}, path::Path};
+use std::{
+    fs,
+    hash::{Hash, Hasher},
+    path::Path,
+};
 
 pub async fn layer<B>(req: Request<B>, next: Next<B>) -> Response
 where
@@ -45,7 +49,12 @@ pub mod revid {
         response::{IntoResponse, Response},
     };
     use serde::Deserialize;
-    use std::{fs::File, io::{self, Read}, path::Path, str};
+    use std::{
+        fs::File,
+        io::{self, Read},
+        path::Path,
+        str,
+    };
 
     #[derive(Debug, Deserialize)]
     struct Param {
@@ -97,19 +106,21 @@ pub mod revid {
         // <sil:identity> tag in that region.
         let mut buf = [0; 1 << 12];
         let head = File::open(path)
-            .and_then(|mut res| res.read(&mut buf))
-            .map(|len| &buf[..len])
-            .and_then(|buf| {
-                str::from_utf8(&buf).map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
+            .and_then(|mut file| file.read(&mut buf))
+            .and_then(|len| {
+                str::from_utf8(&buf[..len])
+                    .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
             })
             .ok()?;
-    
+
         // Search for the revid= attribute.
         let token = head.find("revid=\"").and_then(|start| {
             let start = start + "revid=".len();
-            head[start+1..].find('"').map(|end| &head[start..=start+end+1])
+            head[start + 1..]
+                .find('"')
+                .map(|end| &head[start..=start + end + 1])
         })?;
-    
+
         token.parse::<ETag>().ok()
-    }    
+    }
 }

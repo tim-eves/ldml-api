@@ -30,7 +30,7 @@ impl FromStr for UniqueID {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::UniqueID;
 
     #[test]

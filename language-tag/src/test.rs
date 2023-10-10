@@ -155,7 +155,13 @@ fn setters() {
             None,
             "US",
             ["1abc", "2def"],
-            ["a-abcdef", "b-abcdef", "b-ghijklmn", "b-opqrstuv", "c-tester"],
+            [
+                "a-abcdef",
+                "b-abcdef",
+                "b-ghijklmn",
+                "b-opqrstuv",
+                "c-tester"
+            ],
             "x-priv"
         )
     );

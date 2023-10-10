@@ -221,23 +221,24 @@ struct WSParams {
 }
 
 async fn writing_system_tags(ws: &Tag, cfg: &Config) -> impl IntoResponse {
-    query_tags(&ws, &cfg.langtags)
-        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Invalid language tag: {ws}")))
+    query_tags(ws, &cfg.langtags).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            format!("No tagsets found for tag: {ws}"),
+        )
+    })
 }
 
-async fn fetch_wirting_system_ldml(ws: &Tag, params: &WSParams, cfg: &Config) -> impl IntoResponse {
+async fn fetch_writing_system_ldml(ws: &Tag, params: WSParams, cfg: &Config) -> impl IntoResponse {
     let ext = params.ext.as_deref().unwrap_or("xml");
     let flatten = *params.flatten.unwrap_or(Toggle::ON);
-    let xpaths = params.inc;
-    let _revid = params.revid.as_deref().unwrap_or_default();
-    let _uid = params.uid.unwrap_or_default();
 
-    let path = find_ldml_file(&ws, &cfg.sldr_path(flatten), &cfg.langtags)
-    .ok_or_else(|| (StatusCode::NOT_FOUND, format!("No LDML for {ws}")).into_response())?;
-    let etag = etag::revid::from_ldml(&path)
-    .or_else(|| etag::from_metadata(&path));
+    tracing::debug!("find writing system with {params:?}");
+    let path = find_ldml_file(ws, &cfg.sldr_path(flatten), &cfg.langtags)
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("No LDML for {ws}")).into_response())?;
+    let etag = etag::revid::from_ldml(&path).or_else(|| etag::from_metadata(&path));
     let mut headers = HeaderMap::new();
-    
+
     if let Some(tag) = etag {
         headers.typed_insert(tag);
     }
@@ -274,7 +275,7 @@ async fn demux_writing_system(
     if let Some("tags") = params.query.as_deref() {
         writing_system_tags(&ws, &cfg).await.into_response()
     } else {
-        fetch_wirting_system_ldml(&ws, &params, &cfg)
+        fetch_writing_system_ldml(&ws, params, &cfg)
             .await
             .into_response()
     }

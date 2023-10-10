@@ -56,7 +56,6 @@ impl Document {
     pub fn subset(&mut self, xpaths: &[&str]) -> Result<(), String> {
         let compound =
             "/ldml/*[self::".to_string() + &xpaths.join(" or self::") + " or self::identity]";
-
         let nodes = self.findnodes(&compound).ok_or("XPath evalution failed")?;
         let ldml = self
             .inner
@@ -87,7 +86,7 @@ impl ToString for Document {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::Document;
 
     #[test]
@@ -111,7 +110,7 @@ mod tests {
     fn find_sil_kdb() {
         let doc = Document::new("test/en_US.xml").expect("LDML failed parse.");
         let silkbd = doc
-            ._findvalue("//sil:kbd[@id = 'basic_kbdusa']/sil:url")
+            ._findvalue("//sil:kbd[@id='basic_kbdusa']/sil:url")
             .expect("Value not found");
 
         assert_eq!(
