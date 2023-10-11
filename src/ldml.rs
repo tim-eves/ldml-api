@@ -11,10 +11,7 @@ pub struct Document {
 }
 
 impl Document {
-    pub fn new<'a, P>(path: P) -> io::Result<Self>
-    where
-        P: AsRef<Path> + 'a,
-    {
+    pub fn new<'a>(path: impl AsRef<Path> + 'a) -> io::Result<Self> {
         // let doc = fs::read(path)?;
         let parser: Parser = Default::default();
         let inner = parser

@@ -23,11 +23,12 @@ fn dash<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, char, E>
     char('-')(input)
 }
 
-fn extension_form<'a, O, E: ParseError<&'a str>, F>(
+fn extension_form<'a, O, E, F>(
     prefix: F,
     min: usize,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, &'a str, E>
 where
+    E: ParseError<&'a str>,
     F: FnMut(&'a str) -> IResult<&'a str, O, E>,
 {
     recognize(separated_pair(
@@ -37,10 +38,9 @@ where
     ))
 }
 
-fn subtag<'a, O, E: ParseError<&'a str>, F>(
-    parser: F,
-) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
+fn subtag<'a, O, E, F>(parser: F) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
 where
+    E: ParseError<&'a str>,
     F: FnMut(&'a str) -> IResult<&'a str, O, E>,
 {
     let eot = not(peek(verify(anychar, |c| c.is_ascii_alphanumeric())));
@@ -58,17 +58,12 @@ fn private<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a s
     extension_form(char('x'), 1)(input)
 }
 
-fn fixed_parse<'a, L, R, V, E: ParseError<&'a str>>(
+fn fixed_parse<'a, E: ParseError<&'a str>>(
     name: &'static str,
-    lang: L,
-    region: R,
-    variant: V,
-) -> impl FnMut(&'a str) -> IResult<&'a str, Tag, E>
-where
-    L: Into<Option<&'static str>>,
-    R: Into<Option<&'static str>>,
-    V: Into<Option<&'static str>>,
-{
+    lang: impl Into<Option<&'static str>>,
+    region: impl Into<Option<&'static str>>,
+    variant: impl Into<Option<&'static str>>,
+) -> impl FnMut(&'a str) -> IResult<&'a str, Tag, E> {
     value(
         Tag::from_parts(
             lang.into().unwrap_or(name),
@@ -313,13 +308,14 @@ mod test {
                     .build()),
             ),
             (
-                "en-aaa-ccc-Latn-US-2abc-what2-a-bable-q-babbel-x-priv1",
+                "en-aaa-ccc-Latn-US-2abc-what2-a-bable-test-q-babbel-x-priv1",
                 Ok(Tag::builder()
                     .lang("en-aaa-ccc")
                     .script("Latn")
                     .region("US")
                     .variants(["2abc", "what2"])
                     .extension("a-bable")
+                    .extension("a-test")
                     .extension("q-babbel")
                     .private("x-priv1")
                     .build()),

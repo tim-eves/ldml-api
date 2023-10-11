@@ -225,7 +225,7 @@ impl Tag {
         self.end.adjust_region(self.buf.len() as isize - old);
     }
 
-    pub fn set_variants<'a, C: AsRef<[&'a str]>>(&mut self, variants: C) {
+    pub fn set_variants<'a>(&mut self, variants: impl AsRef<[&'a str]>) {
         let variants = variants.as_ref();
         let variants = variants.join("-");
         let old = self.buf.len() as isize;
@@ -243,7 +243,7 @@ impl Tag {
     }
 
     #[track_caller]
-    pub fn set_extensions<'a, C: AsRef<[&'a str]>>(&mut self, extensions: C) {
+    pub fn set_extensions<'a>(&mut self, extensions: impl AsRef<[&'a str]>) {
         let mut extensions = extensions.as_ref().to_vec();
         let extensions = if extensions.is_empty() {
             Default::default()
@@ -502,7 +502,7 @@ impl<'c> Iterator for Variants<'c> {
 
 impl FusedIterator for Variants<'_> {}
 
-impl<'c> DoubleEndedIterator for Variants<'c> {
+impl DoubleEndedIterator for Variants<'_> {
     #[inline(always)]
     fn next_back(&mut self) -> Option<Self::Item> {
         self.0.next_back()
@@ -515,7 +515,7 @@ pub struct ExtensionRef<'c> {
     namespace: char,
 }
 
-impl<'a, 'c> PartialEq<&str> for ExtensionRef<'c> {
+impl PartialEq<&str> for ExtensionRef<'_> {
     fn eq(&self, other: &&str) -> bool {
         [self.namespace as u8, b'-'].eq(&other.as_bytes()[..2]) && self.name.eq(&other[2..])
     }
