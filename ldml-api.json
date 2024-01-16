@@ -1,11 +1,11 @@
 {
     "staging": {
-        "langtags": "langtags/test/",
-        "sldr": "../sldr/"
+        "langtags": "data/langtags/staging",
+        "sldr": "data/sldr/staging"
     },
     "production": {
         "sendfile_method": "X-Accel-Redirect",
-        "langtags": "langtags/test/",
-        "sldr": "../sldr/"
+        "langtags": "data/langtags/production",
+        "sldr": "data/sldr/production"
     }
 }

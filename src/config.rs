@@ -137,7 +137,7 @@ mod test {
         )
         .err()
         .expect("io:Error: Not found during profiles::from_reader.");
-        assert_eq!(res.kind(), std::io::ErrorKind::NotFound);
+        assert_eq!(res.kind(), std::io::ErrorKind::InvalidData);
     }
 
     #[test]

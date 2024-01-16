@@ -7,6 +7,7 @@ use std::{fmt::Display, iter::once, ops::Deref, path::PathBuf};
 pub struct TagSet {
     // Required keys
     pub full: Tag,
+    #[serde(default)]
     pub iana: Vec<String>,
     pub sldr: bool,
     pub tag: Tag,
