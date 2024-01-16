@@ -141,25 +141,26 @@ impl LangTags {
 
     pub fn orthographic_normal_form(&self, tag: &Tag) -> Option<&TagSet> {
         let mut key = tag.clone();
-        let idx = *self
+        let idx = self
             .full
             .get(&key.to_string())
-            .or({
+            .or_else(|| {
                 key.set_private("");
                 self.full.get(&key.to_string())
             })
-            .or({
+            .or_else(|| {
                 key.set_extensions([]);
                 self.full.get(&key.to_string())
             })
-            .or({
+            .or_else(|| {
                 key.set_variants([]);
                 self.full.get(&key.to_string())
             })
-            .or({
+            .or_else(|| {
                 key.set_region("");
                 self.full.get(&key.to_string())
-            })? as usize;
+            });
+        let idx = *idx? as usize;
         let ts = self.tagsets.get(idx)?;
 
         if key == *tag
@@ -504,6 +505,11 @@ mod test {
             ts.expect("TagSet").full,
             Tag::from_str("dgl-Copt-SD-x-olnubian").unwrap()
         );
+        // let ts = ltdb.locale_normal_form(&Tag::from_str("dgl-Copt-SD-a-test").expect("Tag value"));
+        // assert_eq!(
+        //     ts.expect("TagSet").full,
+        //     Tag::from_str("dgl-Copt-SD-x-olnubian").unwrap()
+        // );
     }
 
     #[test]
