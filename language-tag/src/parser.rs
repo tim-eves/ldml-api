@@ -15,7 +15,7 @@ use nom::{
 };
 
 pub use nom::{
-    error::{Error, ErrorKind},
+    error::Error,
     Finish,
 };
 
