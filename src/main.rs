@@ -67,7 +67,11 @@ async fn main() -> io::Result<()> {
     let args = Args::parse();
 
     // Load configuraion
-    let cfg = config::profiles::from(&args.config, &args.profile)?;
+    let cfg = config::profiles::from(&args.config, &args.profile)
+        .unwrap_or_else(|e| {
+        tracing::error!("Error: {file}: {message}", file=args.config.to_string_lossy(), message=e.to_string());
+        std::process::exit(e.raw_os_error().unwrap_or_default())
+    });
     tracing::info!(
         "loaded profiles: {profiles:?}",
         profiles = cfg.keys().collect::<Vec<_>>()
