@@ -42,7 +42,7 @@ use unique_id::UniqueID;
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Args {
-    #[clap(long, default_value = "./ldml-api.json")]
+    #[clap(long, default_value = "/etc/ldml-api.json")]
     /// Path to config file
     config: path::PathBuf,
 
