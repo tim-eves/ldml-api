@@ -54,7 +54,7 @@ struct Args {
     listen: SocketAddr,
 }
 
-#[tokio::main()]
+#[tokio::main]
 async fn main() -> io::Result<()> {
     //console_subscriber::init();
     // Set the RUST_LOG, if it hasn't been explicitly defined
@@ -282,7 +282,7 @@ async fn demux_writing_system(
         match query {
             LDMLQuery::AllTags | LDMLQuery::LangTags => (
                 StatusCode::BAD_REQUEST,
-                "query=alltags is only valid without a ws_id.",
+                "query=alltags, or query=langtags is only valid without a ws_id.",
             )
                 .into_response(),
             LDMLQuery::Tags => writing_system_tags(&ws, &cfg).await.into_response(),
