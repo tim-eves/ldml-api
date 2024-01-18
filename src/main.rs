@@ -102,8 +102,8 @@ fn app(cfg: Profiles) -> io::Result<Router> {
         )
         .layer(middleware::from_fn_with_state(cfg.into(), profile_selector))
         .route("/", get(query_only))
-        .route("/index.html", get(static_help))
-        .fallback(static_help))
+        .route("/index.html", get(query_only))
+        .fallback(query_only))
 }
 
 async fn static_help() -> impl IntoResponse {
@@ -203,13 +203,13 @@ async fn query_only(Query(params): Query<QueryParams>) -> impl IntoResponse {
         )),
         Some(LDMLQuery::LangTags) => {
             let ext = params.ext.as_deref().unwrap_or("txt");
-            Ok(Redirect::permanent(&format!("/langtags.{ext}")))
+            Ok(Redirect::permanent(&format!("/langtags.{ext}")).into_response())
         }
         Some(LDMLQuery::Tags) => Err((
             StatusCode::BAD_REQUEST,
             "LDML SERVER ERROR: query=tags requires a ws_id",
         )),
-        None => Ok(Redirect::temporary("/index.html")),
+        None => Ok(static_help().await.into_response()),
     }
 }
 
@@ -388,7 +388,7 @@ mod test {
             .expect("Response");
 
         let fallback_response = app
-            .oneshot(
+            .call(
                 Request::builder()
                     .uri("/")
                     .body(Body::empty())
@@ -397,8 +397,20 @@ mod test {
             .await
             .expect("Response");
 
+        let query_response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/index.html?query=langtags&ext=json")
+                    .body(Body::empty())
+                    .expect("Request"),
+            )
+            .await
+            .expect("Response");
+
         assert_eq!(response.status(), StatusCode::OK);
-        assert_eq!(fallback_response.status(), StatusCode::TEMPORARY_REDIRECT);
+        assert_eq!(fallback_response.status(), StatusCode::OK);
+        assert_eq!(query_response.status(), StatusCode::PERMANENT_REDIRECT);
+
 
         let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
         assert_eq!(&body[..], include_str!("index.html").as_bytes());
