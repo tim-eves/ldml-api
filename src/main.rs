@@ -86,9 +86,38 @@ async fn main() -> io::Result<()> {
                 .layer(TraceLayer::new_for_http())
                 .into_make_service(),
         )
+        .with_graceful_shutdown(shutdown_signal())
         .await
         .unwrap();
+
+    tracing::info!("shutting down");
     Ok(())
+}
+
+async fn shutdown_signal() {
+    use tokio::signal;
+    
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {tracing::debug!("received SIGINT")},
+        _ = terminate => {tracing::debug!("received SIGTERM")},
+    }
 }
 
 fn app(cfg: Profiles) -> io::Result<Router> {
@@ -461,6 +490,14 @@ mod test {
     async fn simple_writing_system_request() {
         assert_eq!(
             request_ldml_file(&Tag::from_str("en-US").expect("Tag")).await,
+            StatusCode::OK
+        );
+        assert_eq!(
+            request_ldml_file(&Tag::from_str("thv-Latn-DZ-x-ahaggar").expect("Tag")).await,
+            StatusCode::OK
+        );
+        assert_eq!(
+            request_ldml_file(&Tag::from_str("eka-Latn-NG-x-ekajuk").expect("Tag")).await,
             StatusCode::OK
         );
         assert_eq!(
