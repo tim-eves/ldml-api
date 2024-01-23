@@ -488,18 +488,18 @@ mod test {
 
     #[tokio::test]
     async fn simple_writing_system_request() {
-        assert_eq!(
-            request_ldml_file(&Tag::from_str("en-US").expect("Tag")).await,
-            StatusCode::OK
-        );
-        assert_eq!(
-            request_ldml_file(&Tag::from_str("thv-Latn-DZ-x-ahaggar").expect("Tag")).await,
-            StatusCode::OK
-        );
-        assert_eq!(
-            request_ldml_file(&Tag::from_str("eka-Latn-NG-x-ekajuk").expect("Tag")).await,
-            StatusCode::OK
-        );
+        async fn assert_tag_exists(tag: &str) {
+            let tag = Tag::from_str(&tag).expect("Tag");
+            assert_eq!(
+                request_ldml_file(&tag).await, 
+                StatusCode::OK,
+                "NotFound: {tag}"
+            );    
+        }
+        assert_tag_exists("thv-Latn-DZ-x-ahaggar").await;
+        assert_tag_exists("eka-Latn-NG-x-ekajuk").await;
+        assert_tag_exists("thv-DZ-x-ahaggar").await;
+        assert_tag_exists("eka-NG-x-ekajuk").await;
         assert_eq!(
             request_ldml_file(&Tag::from_str("en-KP").expect("Tag")).await,
             StatusCode::NOT_FOUND
