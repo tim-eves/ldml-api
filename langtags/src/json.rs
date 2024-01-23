@@ -167,7 +167,9 @@ impl LangTags {
             || LangTags::valid_region(ts, tag.region())
                 && self.valid_variants(ts, tag)
                 && LangTags::valid_extensions(ts, tag.extensions())
-                && ts.full.private() == tag.private()
+                && ts.full.private()
+                        .map_or(true, 
+                                |ts_p| tag.private().is_some_and(|p| p == ts_p))
         {
             Some(ts)
         } else {
