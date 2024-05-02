@@ -222,6 +222,7 @@ struct QueryParams {
     _ws_id: Option<Tag>,
     query: Option<LDMLQuery>,
     ext: Option<String>,
+    staging: Option<Toggle>,
 }
 
 async fn query_only(Query(params): Query<QueryParams>) -> impl IntoResponse {
@@ -232,7 +233,11 @@ async fn query_only(Query(params): Query<QueryParams>) -> impl IntoResponse {
         )),
         Some(LDMLQuery::LangTags) => {
             let ext = params.ext.as_deref().unwrap_or("txt");
-            Ok(Redirect::permanent(&format!("/langtags.{ext}")).into_response())
+            let mut target = format!("/langtags.{ext}");
+            if *params.staging.unwrap_or_default() {
+                target += "?staging=1";
+            }
+            Ok(Redirect::permanent(&target).into_response())
         }
         Some(LDMLQuery::Tags) => Err((
             StatusCode::BAD_REQUEST,
@@ -383,6 +388,7 @@ mod test {
         http::{Request, StatusCode},
         Router,
     };
+    use hyper::header::LOCATION;
     use std::str::FromStr;
     use std::{
         fs::File,
@@ -427,9 +433,19 @@ mod test {
             .expect("Response");
 
         let query_response = app
-            .oneshot(
+            .call(
                 Request::builder()
                     .uri("/index.html?query=langtags&ext=json")
+                    .body(Body::empty())
+                    .expect("Request"),
+            )
+            .await
+            .expect("Response");
+
+        let query_response_staging = app
+            .oneshot(
+                Request::builder()
+                    .uri("/index.html?query=langtags&ext=json&staging=1")
                     .body(Body::empty())
                     .expect("Request"),
             )
@@ -439,6 +455,8 @@ mod test {
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(fallback_response.status(), StatusCode::OK);
         assert_eq!(query_response.status(), StatusCode::PERMANENT_REDIRECT);
+        assert_eq!(query_response_staging.status(), StatusCode::PERMANENT_REDIRECT);
+        assert_eq!(query_response_staging.headers().get(LOCATION).unwrap().to_str().unwrap(), "/langtags.json?staging=1");
 
 
         let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
