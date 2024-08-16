@@ -10,7 +10,7 @@ description = "LDML REST API endpoint."
 keywords = ["ldml", "http", "rest", "web"]
 license = "GPLv3"
 readme = "README.md"
-version = "0.0.0"
+version = "0.1.1"
 authors = ["Tim Eves <tim_eves@sil.org>"]
 edition = "2021"
 
@@ -24,7 +24,7 @@ clap = { version = "~4.3", features = ["derive"] }
 langtags = { version = "~0", path = "./langtags" }
 language-tag = { version = "~0", path = "./language-tag" }
 # We need to use upstream repo until space leak fix is released. version > 0.3.1
-libxml = { git = "https://github.com/KWARC/rust-libxml"}
+libxml = { version = "0.3.2"}
 mime_guess = "2.0"
 rand = "0.8.5"
 serde = { version = "~1.0", features = ["derive"] }
