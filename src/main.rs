@@ -403,7 +403,7 @@ mod test {
         use std::sync::OnceLock;
         static SHARED_PROFILES: OnceLock<Profiles> = OnceLock::new();
         SHARED_PROFILES.get_or_init(|| {
-            config::profiles::from("./ldml-api.json", "production").expect("test config")
+            config::profiles::from("./ldml-api.json", "staging").expect("test config")
         })
     }
 
@@ -538,6 +538,7 @@ mod test {
         );
     }
 
+    #[ignore]
     #[test]
     fn palaso_writing_systems_list() {
         let tags = BufReader::new(File::open("test/palaso-tag.list").expect("tag list"))

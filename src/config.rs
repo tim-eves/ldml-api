@@ -159,7 +159,7 @@ mod test {
                  }"#[..],
         )
         .expect("Profiles value.");
-        let langtags_json = &br#"
+        let langtags_json = &r#"
             [
                 {
                     "regions": [ "AA", "AC", "AN", "AQ", "BU", "BV", "CP", "CS", "DD", "EU", "EZ", "FX", "GS", "HM", "NT", "QM", "QN", "QO", "QP", "QQ", "QR", "QS", "QT", "QU", "QV", "QW", "QX", "QY", "QZ", "SU", "TA", "TF", "TP", "UN", "XA", "XB", "XC", "XD", "XE", "XF", "XG", "XH", "XI", "XJ", "XL", "XM", "XN", "XO", "XP", "XQ", "XR", "XS", "XT", "XU", "XV", "XW", "XY", "XZ", "YD", "YU", "ZR", "ZZ" ],
@@ -249,6 +249,82 @@ mod test {
                     "sldr": false,
                     "tag": "aa-Ethi",
                     "windows": "aa-Ethi-ET"
+                },
+                {
+                    "full": "eka-Latn-NG",
+                    "iana": [ "Ekajuk" ],
+                    "iso639_3": "eka",
+                    "name": "Ekajuk",
+                    "names": [ "Akajo", "Akajuk" ],
+                    "region": "NG",
+                    "regionname": "Nigeria",
+                    "script": "Latn",
+                    "sldr": true,
+                    "tag": "eka",
+                    "tags": [ "eka-Latn", "eka-NG" ],
+                    "windows": "eka-Latn"
+                },
+                {
+                    "full": "eka-Latn-NG-x-ekajuk",
+                    "iana": [ "Ekajuk" ],
+                    "iso639_3": "eka",
+                    "name": "Ekajuk",
+                    "names": [ "Akajo", "Akajuk" ],
+                    "region": "NG",
+                    "regionname": "Nigeria",
+                    "script": "Latn",
+                    "sldr": true,
+                    "tag": "eka-Latn-NG-x-ekajuk",
+                    "windows": "eka-Latn-NG-x-ekajuk"
+                },
+                {
+                    "full": "frm-Latn-FR",
+                    "iana": [ "Middle French (ca. 1400-1600)" ],
+                    "iso639_3": "frm",
+                    "name": "Middle French (ca. 1400-1600)",
+                    "region": "FR",
+                    "regionname": "France",
+                    "regions": [ "BE" ],
+                    "script": "Latn",
+                    "sldr": false,
+                    "tag": "frm",
+                    "tags": [ "frm-FR", "frm-Latn" ],
+                    "variants": [ "1606nict" ],
+                    "windows": "frm-Latn"
+                },
+                {
+                    "full": "thv-Latn-DZ",
+                    "iana": [ "Tahaggart Tamahaq" ],
+                    "iso639_3": "thv",
+                    "localname": "Tamahaq",
+                    "localnames": [ "Tamahaq" ],
+                    "macrolang": "tmh",
+                    "name": "Tamahaq, Tahaggart",
+                    "names": [ "Tahaggart Tamahaq", "Tamachek", "Tamachek’", "Tamahaq", "Tamashekin", "Tamasheq", "Tomachek", "Touareg", "Tourage", "Toureg", "Tuareg" ],
+                    "region": "DZ",
+                    "regionname": "Algeria",
+                    "regions": [ "LY", "NE" ],
+                    "script": "Latn",
+                    "sldr": true,
+                    "tag": "thv",
+                    "tags": [ "thv-DZ", "thv-Latn" ],
+                    "windows": "thv-Latn"
+                },
+                {
+                    "full": "thv-Latn-DZ-x-ahaggar",
+                    "iana": [ "Tahaggart Tamahaq" ],
+                    "iso639_3": "thv",
+                    "localname": "Tamahaq",
+                    "localnames": [ "Tamahaq" ],
+                    "macrolang": "tmh",
+                    "name": "Tamahaq, Tahaggart",
+                    "names": [ "Tahaggart Tamahaq", "Tamachek", "Tamachek’", "Tamahaq", "Tamashekin", "Tamasheq", "Tomachek", "Touareg", "Tourage", "Tuareg" ],
+                    "region": "DZ",
+                    "regionname": "Algeria",
+                    "script": "Latn",
+                    "sldr": true,
+                    "tag": "thv-Latn-DZ-x-ahaggar",
+                    "windows": "thv-Latn-DZ-x-ahaggar"
                 }
             ]"#[..];
         let mut expected = Profiles::new();
@@ -256,7 +332,7 @@ mod test {
             "production".into(),
             Arc::new(Config {
                 sendfile_method: Some("X-Accel-Redirect".into()),
-                langtags: LangTags::from_reader(langtags_json)
+                langtags: LangTags::from_reader(langtags_json.as_bytes())
                     .expect("LangTags production test case."),
                 langtags_dir: "test/short/".into(),
                 sldr_dir: "/data/sldr/".into(),
@@ -266,7 +342,7 @@ mod test {
             "staging".into(),
             Config {
                 sendfile_method: None,
-                langtags: LangTags::from_reader(langtags_json)
+                langtags: LangTags::from_reader(langtags_json.as_bytes())
                     .expect("LangTags staging test case."),
                 langtags_dir: "test/short/".into(),
                 sldr_dir: "/staging/data/sldr/".into(),
