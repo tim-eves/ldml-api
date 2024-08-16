@@ -14,10 +14,7 @@ use nom::{
     IResult,
 };
 
-pub use nom::{
-    error::Error,
-    Finish,
-};
+pub use nom::{error::Error, Finish};
 
 fn dash<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, char, E> {
     char('-')(input)

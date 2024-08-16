@@ -67,9 +67,12 @@ async fn main() -> io::Result<()> {
     let args = Args::parse();
 
     // Load configuraion
-    let cfg = config::profiles::from(&args.config, &args.profile)
-        .unwrap_or_else(|e| {
-        tracing::error!("Error: {file}: {message}", file=args.config.to_string_lossy(), message=e.to_string());
+    let cfg = config::profiles::from(&args.config, &args.profile).unwrap_or_else(|e| {
+        tracing::error!(
+            "Error: {file}: {message}",
+            file = args.config.to_string_lossy(),
+            message = e.to_string()
+        );
         std::process::exit(e.raw_os_error().unwrap_or_default())
     });
     tracing::info!(
@@ -96,7 +99,7 @@ async fn main() -> io::Result<()> {
 
 async fn shutdown_signal() {
     use tokio::signal;
-    
+
     let ctrl_c = async {
         signal::ctrl_c()
             .await
@@ -455,9 +458,20 @@ mod test {
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(fallback_response.status(), StatusCode::OK);
         assert_eq!(query_response.status(), StatusCode::PERMANENT_REDIRECT);
-        assert_eq!(query_response_staging.status(), StatusCode::PERMANENT_REDIRECT);
-        assert_eq!(query_response_staging.headers().get(LOCATION).unwrap().to_str().unwrap(), "/langtags.json?staging=1");
-
+        assert_eq!(
+            query_response_staging.status(),
+            StatusCode::PERMANENT_REDIRECT
+        );
+        let query_response_staging_location = query_response_staging
+            .headers()
+            .get(LOCATION)
+            .expect("Location HTTP header");
+        assert_eq!(
+            query_response_staging_location
+                .to_str()
+                .expect("Location HTTP header value"),
+            "/langtags.json?staging=1"
+        );
 
         let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
         assert_eq!(&body[..], include_str!("index.html").as_bytes());
@@ -509,10 +523,10 @@ mod test {
         async fn assert_tag_exists(tag: &str) {
             let tag = Tag::from_str(&tag).expect("Tag");
             assert_eq!(
-                request_ldml_file(&tag).await, 
+                request_ldml_file(&tag).await,
                 StatusCode::OK,
                 "NotFound: {tag}"
-            );    
+            );
         }
         assert_tag_exists("thv-Latn-DZ-x-ahaggar").await;
         assert_tag_exists("eka-Latn-NG-x-ekajuk").await;

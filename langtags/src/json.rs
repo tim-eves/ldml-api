@@ -163,13 +163,14 @@ impl LangTags {
         let idx = *idx? as usize;
         let ts = self.tagsets.get(idx)?;
 
+        let private_is_valid = ts.full.private().map_or(true, |ts_priv| {
+            tag.private().is_some_and(|tag_priv| tag_priv == ts_priv)
+        });
         if key == *tag
             || LangTags::valid_region(ts, tag.region())
                 && self.valid_variants(ts, tag)
                 && LangTags::valid_extensions(ts, tag.extensions())
-                && ts.full.private()
-                        .map_or(true, 
-                                |ts_p| tag.private().is_some_and(|p| p == ts_p))
+                && private_is_valid
         {
             Some(ts)
         } else {

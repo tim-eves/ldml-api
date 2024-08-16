@@ -75,11 +75,14 @@ pub mod profiles {
                 })?;
 
             let langtags_path = langtags_dir.join("langtags.json");
-            let reader = BufReader::new(File::open(&langtags_path)
-                .map_err(|e| {
-                    tracing::error!("Error: {file}: {message}", file=langtags_path.to_string_lossy(), message=e.to_string());
-                    into_parse_error("langtags path")
-                })?);
+            let reader = BufReader::new(File::open(&langtags_path).map_err(|e| {
+                tracing::error!(
+                    "Error: {file}: {message}",
+                    file = langtags_path.to_string_lossy(),
+                    message = e.to_string()
+                );
+                into_parse_error("langtags path")
+            })?);
             let langtags = LangTags::from_reader(reader)?;
 
             configs.insert(
