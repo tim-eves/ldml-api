@@ -63,9 +63,7 @@ impl TagSet {
             .chain(once(&self.full))
     }
 
-    pub fn region_sets(
-        &self,
-    ) -> impl Iterator<Item = impl Iter<Tag> + '_> + Clone + DoubleEndedIterator {
+    pub fn region_sets(&self) -> impl DoubleEndedIterator<Item = impl Iter<Tag> + '_> + Clone {
         let prototypes = self
             .iter()
             .filter(|tag| tag.region().is_some())
@@ -81,7 +79,7 @@ impl TagSet {
 
     pub fn variant_sets(
         &self,
-    ) -> impl Iterator<Item = impl Iter<Tag> + '_> + Clone + DoubleEndedIterator + '_ {
+    ) -> impl DoubleEndedIterator<Item = impl Iter<Tag> + '_> + Clone + '_ {
         let prototypes = once(self.iter().cloned().collect::<Vec<Tag>>())
             .chain(self.region_sets().map(|rs| rs.collect::<Vec<Tag>>()));
         prototypes.flat_map(|prototype| {

@@ -199,13 +199,13 @@ impl LangTags {
         })
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&Tag, &TagSet)> + DoubleEndedIterator + Clone {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = (&Tag, &TagSet)> + Clone {
         self.tagsets
             .iter()
             .flat_map(|ts| ts.iter().map(move |t| (t, ts)))
     }
 
-    pub fn tagsets(&self) -> impl Iterator<Item = &TagSet> + DoubleEndedIterator + Clone {
+    pub fn tagsets(&self) -> impl DoubleEndedIterator<Item = &TagSet> + Clone {
         self.tagsets.iter()
     }
 }

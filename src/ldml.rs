@@ -1,3 +1,4 @@
+use core::fmt;
 use libxml::{
     parser::{Parser, ParserOptions},
     readonly::RoNode,
@@ -81,15 +82,15 @@ impl Document {
     }
 }
 
-impl ToString for Document {
-    fn to_string(&self) -> String {
-        self.inner.to_string_with_options(SaveOptions {
+impl fmt::Display for Document {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.inner.to_string_with_options(SaveOptions {
             format: true,
             no_empty_tags: false,
             no_xhtml: true,
             non_significant_whitespace: true,
             ..Default::default()
-        })
+        }))
     }
 }
 

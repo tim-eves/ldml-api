@@ -70,10 +70,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn extensions<C: IntoIterator<Item = impl AsRef<str>>>(mut self, c: C) -> Self {
-        self.extensions = c
-            .into_iter()
-            .map(|e| e.as_ref().try_into().expect("Validating extension"))
-            .collect();
+        self.extensions = c.into_iter().map(|e| e.as_ref().into()).collect();
         self
     }
 
