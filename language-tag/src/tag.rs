@@ -612,3 +612,143 @@ impl FusedIterator for Extentions<'_> {}
 
 //     }
 // }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_parts() {
+        let tag = Tag::from_parts(
+            "en",
+            "Latn",
+            "US",
+            ["1abc", "2def", "3ghi"],
+            ["a-abcdef", "b-ghijklmn", "c-tester"],
+            "x-priv",
+        );
+        assert_eq!(
+            tag,
+            Tag {
+                buf: "en-Latn-US-1abc-2def-3ghi-a-abcdef-b-ghijklmn-c-tester-x-priv".into(),
+                end: Offsets {
+                    lang: 2,
+                    script: 7,
+                    region: 10,
+                    variants: 25,
+                    extensions: 54
+                },
+            }
+        );
+
+        let tag = Tag::from_parts(
+            "en",
+            "Latn",
+            "US",
+            ["1abc", "2def", "3ghi"],
+            ["a-abcdef", "b-ghijklmn", "c-tester"],
+            None,
+        );
+        assert_eq!(
+            tag,
+            Tag {
+                buf: "en-Latn-US-1abc-2def-3ghi-a-abcdef-b-ghijklmn-c-tester".into(),
+                end: Offsets {
+                    lang: 2,
+                    script: 7,
+                    region: 10,
+                    variants: 25,
+                    extensions: 25
+                },
+            }
+        );
+
+        let tag = Tag::from_parts("en", "Latn", "US", ["1abc", "2def", "3ghi"], None, None);
+        assert_eq!(
+            tag,
+            Tag {
+                buf: "en-Latn-US-1abc-2def-3ghi".into(),
+                end: Offsets {
+                    lang: 2,
+                    script: 7,
+                    region: 10,
+                    variants: 10,
+                    extensions: 10
+                },
+            }
+        );
+
+        let tag = Tag::from_parts("en", "Latn", "US", None, None, None);
+        assert_eq!(
+            tag,
+            Tag {
+                buf: "en-Latn-US".into(),
+                end: Offsets {
+                    lang: 2,
+                    script: 7,
+                    region: 7,
+                    variants: 7,
+                    extensions: 7
+                },
+            }
+        );
+
+        let tag = Tag::from_parts("en", None, "US", None, None, None);
+        assert_eq!(
+            tag,
+            Tag {
+                buf: "en-US".into(),
+                end: Offsets {
+                    lang: 2,
+                    script: 2,
+                    region: 5,
+                    variants: 5,
+                    extensions: 5
+                },
+            }
+        );
+    }
+
+    #[test]
+    fn constructors() {
+        assert_eq!(
+            Tag::with_lang("en"),
+            Tag {
+                buf: "en".into(),
+                end: Offsets {
+                    lang: 2,
+                    script: 2,
+                    region: 2,
+                    variants: 2,
+                    extensions: 2
+                }
+            }
+        );
+        assert_eq!(
+            Tag::privateuse("x-priv"),
+            Tag {
+                buf: "x-priv".into(),
+                end: Offsets {
+                    lang: 0,
+                    script: 0,
+                    region: 0,
+                    variants: 0,
+                    extensions: 0
+                }
+            }
+        );
+        assert_eq!(
+            Tag::default(),
+            Tag {
+                buf: "".into(),
+                end: Offsets {
+                    lang: 0,
+                    script: 0,
+                    region: 0,
+                    variants: 0,
+                    extensions: 0
+                }
+            }
+        );
+    }
+}

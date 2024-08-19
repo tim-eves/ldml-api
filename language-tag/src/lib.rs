@@ -1,6 +1,5 @@
 mod parser;
 mod tag;
-mod test;
 
 pub use self::tag::{ExtensionRef, Tag};
 

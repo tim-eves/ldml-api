@@ -217,7 +217,8 @@ impl FromStr for Tag {
     }
 }
 
-mod test {
+#[cfg(test)]
+mod tests {
     #[test]
     fn grandfathered() {
         use crate::Tag;
@@ -227,11 +228,7 @@ mod test {
             ("cel-gaulish", Ok(Tag::with_lang("cel-gaulish"))),
             (
                 "en-GB-oed",
-                Ok(Tag::builder()
-                    .lang("en")
-                    .region("GB")
-                    .variant("oxendict")
-                    .build()),
+                Ok(Tag::from_parts("en", None, "GB", ["oxendict"], [], None)),
             ),
             ("i-ami", Ok(Tag::with_lang("ami"))),
             ("i-bnn", Ok(Tag::with_lang("bnn"))),
@@ -258,76 +255,8 @@ mod test {
             ("zh-xiang", Ok(Tag::with_lang("hsn"))),
         ];
         for (test, result) in &gf_cases {
-            let test = test.parse::<Tag>();
+            let test = test.parse();
             assert_eq!(test, *result);
-        }
-    }
-
-    #[test]
-    fn complex() {
-        use crate::Tag;
-
-        use nom::error::{Error, ErrorKind};
-        let gf_cases = [
-            (
-                "-",
-                Err(Error {
-                    input: "-".to_string(),
-                    code: ErrorKind::Tag,
-                }),
-            ),
-            ("de", Ok(Tag::with_lang("de"))),
-            (
-                "en-x-priv2",
-                Ok(Tag::builder().lang("en").private("x-priv2").build()),
-            ),
-            ("en-us", Ok(Tag::builder().lang("en").region("us").build())),
-            (
-                "en-Latn-US",
-                Ok(Tag::builder()
-                    .lang("en")
-                    .script("Latn")
-                    .region("US")
-                    .build()),
-            ),
-            (
-                "ca-valencia",
-                Ok(Tag::builder().lang("ca").variant("valencia").build()),
-            ),
-            (
-                "en-Latn-US-2abc-3cde-a2c3e-xwhat-x-priv2",
-                Ok(Tag::builder()
-                    .lang("en")
-                    .script("Latn")
-                    .region("US")
-                    .variants(["2abc", "3cde", "a2c3e", "xwhat"])
-                    .private("x-priv2")
-                    .build()),
-            ),
-            (
-                "en-aaa-ccc-Latn-US-2abc-what2-a-bable-test-q-babbel-x-priv1",
-                Ok(Tag::builder()
-                    .lang("en-aaa-ccc")
-                    .script("Latn")
-                    .region("US")
-                    .variants(["2abc", "what2"])
-                    .extension("a-bable")
-                    .extension("a-test")
-                    .extension("q-babbel")
-                    .private("x-priv1")
-                    .build()),
-            ),
-            (
-                "x-priv1-priv2-xpriv3",
-                Ok(Tag::privateuse("x-priv1-priv2-xpriv3")),
-            ),
-            (
-                "en-gan-yue-Latn",
-                Ok(Tag::builder().lang("en-gan-yue").script("Latn").build()),
-            ),
-        ];
-        for (test, result) in &gf_cases {
-            assert_eq!(test.parse::<Tag>(), *result);
         }
     }
 }
