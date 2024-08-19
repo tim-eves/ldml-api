@@ -104,6 +104,7 @@ pub mod profiles {
 #[cfg(test)]
 mod test {
     use super::{profiles, Arc, Config, LangTags, Profiles};
+    use serde_json::json;
 
     #[test]
     fn missing_config() {
@@ -116,7 +117,7 @@ mod test {
 
     #[test]
     fn unreadable_config() {
-        let res = profiles::from_reader(&br"hang this isn't JSON!"[..])
+        let res = profiles::from_reader(&br"hang on this isn't JSON!"[..])
             .err()
             .expect("io::Error: Invlalid data.");
         assert_eq!(res.kind(), std::io::ErrorKind::InvalidData);
@@ -126,7 +127,8 @@ mod test {
     #[test]
     fn missing_langtags() {
         let res = profiles::from_reader(
-            &br#"{
+            json!(
+                {
                     "staging": {
                         "langtags": "/staging/data/",
                         "sldr": "/staging/data/sldr/"
@@ -136,7 +138,10 @@ mod test {
                         "langtags": "/data/",
                         "sldr": "/data/sldr/"
                     }
-                 }"#[..],
+                }
+            )
+            .to_string()
+            .as_bytes(),
         )
         .err()
         .expect("io:Error: Not found during profiles::from_reader.");
@@ -146,195 +151,199 @@ mod test {
     #[test]
     fn valid_langtags() {
         let res = profiles::from_reader(
-            &br#"{
-                     "staging": {
-                         "langtags": "test/short/",
-                         "sldr": "/staging/data/sldr/"
-                     },
-                     "production": {
-                         "sendfile_method": "X-Accel-Redirect",
-                         "langtags": "test/short/",
-                         "sldr": "/data/sldr/"
-                     }
-                 }"#[..],
+            json!(
+                {
+                    "staging": {
+                        "langtags": "tests/short/",
+                        "sldr": "/staging/data/sldr/"
+                    },
+                    "production": {
+                        "sendfile_method": "X-Accel-Redirect",
+                        "langtags": "tests/short/",
+                        "sldr": "/data/sldr/"
+                    }
+                }
+            )
+            .to_string()
+            .as_bytes(),
         )
         .expect("Profiles value.");
-        let langtags_json = &r#"
-            [
-                {
-                    "regions": [ "AA", "AC", "AN", "AQ", "BU", "BV", "CP", "CS", "DD", "EU", "EZ", "FX", "GS", "HM", "NT", "QM", "QN", "QO", "QP", "QQ", "QR", "QS", "QT", "QU", "QV", "QW", "QX", "QY", "QZ", "SU", "TA", "TF", "TP", "UN", "XA", "XB", "XC", "XD", "XE", "XF", "XG", "XH", "XI", "XJ", "XL", "XM", "XN", "XO", "XP", "XQ", "XR", "XS", "XT", "XU", "XV", "XW", "XY", "XZ", "YD", "YU", "ZR", "ZZ" ],
-                    "scripts": [ "Aran", "Cpmn", "Egyd", "Egyh", "Hira", "Hrkt", "Inds", "Jamo", "Mero", "Moon", "Pcun", "Phlv", "Psin", "Qaaa", "Qaab", "Qaac", "Qaad", "Qaae", "Qaaf", "Qaag", "Qaah", "Qaai", "Qaaj", "Qaak", "Qaal", "Qaam", "Qaan", "Qaao", "Qaap", "Qaaq", "Qaar", "Qaas", "Qaat", "Qaau", "Qaav", "Qaaw", "Qaax", "Qaay", "Qaaz", "Qaba", "Qabb", "Qabc", "Qabd", "Qabe", "Qabf", "Qabg", "Qabh", "Qabi", "Qabj", "Qabk", "Qabl", "Qabm", "Qabn", "Qabo", "Qabp", "Qabq", "Qabr", "Qabs", "Qabt", "Qabu", "Qabv", "Qabw", "Qabx", "Roro", "Shui", "Syre", "Syrn", "Visp", "Zinh", "Zmth", "Zsye", "Zsym" ],
-                    "tag": "_conformance"
-                },
-                {
-                    "tag": "_globalvar",
-                    "variants": [ "simple" ]
-                },
-                {
-                    "tag": "_phonvar",
-                    "variants": [ "alalc97", "fonipa", "fonkirsh", "fonnapa", "fonupa", "fonxsamp" ]
-                },
-                {
-                    "api": "1.3",
-                    "date": "2023-02-20",
-                    "tag": "_version"
-                },
-                {
-                    "full": "aa-Latn-ET",
-                    "iana": [ "Afar" ],
-                    "iso639_3": "aar",
-                    "localname": "Qafar",
-                    "localnames": [ "Qafar af" ],
-                    "name": "Afar",
-                    "region": "ET",
-                    "regionname": "Ethiopia",
-                    "script": "Latn",
-                    "sldr": true,
-                    "tag": "aa",
-                    "tags": [ "aa-ET", "aa-Latn" ],
-                    "windows": "aa-Latn-ET"
-                },
-                {
-                    "full": "aa-Arab-ET",
-                    "iana": [ "Afar" ],
-                    "iso639_3": "aar",
-                    "name": "Afar",
-                    "nophonvars": true,
-                    "region": "ET",
-                    "regionname": "Ethiopia",
-                    "regions": [ "DJ", "ER" ],
-                    "script": "Arab",
-                    "sldr": false,
-                    "tag": "aa-Arab",
-                    "windows": "aa-Arab-ET"
-                },
-                {
-                    "full": "aa-Latn-DJ",
-                    "iana": [ "Afar" ],
-                    "iso639_3": "aar",
-                    "localname": "Qafar",
-                    "localnames": [ "Qafar af" ],
-                    "name": "Afar",
-                    "region": "DJ",
-                    "regionname": "Djibouti",
-                    "script": "Latn",
-                    "sldr": true,
-                    "tag": "aa-DJ",
-                    "windows": "aa-Latn-DJ"
-                },
-                {
-                    "full": "aa-Latn-ER",
-                    "iana": [ "Afar" ],
-                    "iso639_3": "aar",
-                    "localname": "Qafar",
-                    "localnames": [ "Qafar af" ],
-                    "name": "Afar",
-                    "region": "ER",
-                    "regionname": "Eritrea",
-                    "script": "Latn",
-                    "sldr": true,
-                    "tag": "aa-ER",
-                    "windows": "aa-Latn-ER"
-                },
-                {
-                    "full": "aa-Ethi-ET",
-                    "iana": [ "Afar" ],
-                    "iso639_3": "aar",
-                    "name": "Afar",
-                    "nophonvars": true,
-                    "region": "ET",
-                    "regionname": "Ethiopia",
-                    "regions": [ "DJ", "ER" ],
-                    "script": "Ethi",
-                    "sldr": false,
-                    "tag": "aa-Ethi",
-                    "windows": "aa-Ethi-ET"
-                },
-                {
-                    "full": "eka-Latn-NG",
-                    "iana": [ "Ekajuk" ],
-                    "iso639_3": "eka",
-                    "name": "Ekajuk",
-                    "names": [ "Akajo", "Akajuk" ],
-                    "region": "NG",
-                    "regionname": "Nigeria",
-                    "script": "Latn",
-                    "sldr": true,
-                    "tag": "eka",
-                    "tags": [ "eka-Latn", "eka-NG" ],
-                    "windows": "eka-Latn"
-                },
-                {
-                    "full": "eka-Latn-NG-x-ekajuk",
-                    "iana": [ "Ekajuk" ],
-                    "iso639_3": "eka",
-                    "name": "Ekajuk",
-                    "names": [ "Akajo", "Akajuk" ],
-                    "region": "NG",
-                    "regionname": "Nigeria",
-                    "script": "Latn",
-                    "sldr": true,
-                    "tag": "eka-Latn-NG-x-ekajuk",
-                    "windows": "eka-Latn-NG-x-ekajuk"
-                },
-                {
-                    "full": "frm-Latn-FR",
-                    "iana": [ "Middle French (ca. 1400-1600)" ],
-                    "iso639_3": "frm",
-                    "name": "Middle French (ca. 1400-1600)",
-                    "region": "FR",
-                    "regionname": "France",
-                    "regions": [ "BE" ],
-                    "script": "Latn",
-                    "sldr": false,
-                    "tag": "frm",
-                    "tags": [ "frm-FR", "frm-Latn" ],
-                    "variants": [ "1606nict" ],
-                    "windows": "frm-Latn"
-                },
-                {
-                    "full": "thv-Latn-DZ",
-                    "iana": [ "Tahaggart Tamahaq" ],
-                    "iso639_3": "thv",
-                    "localname": "Tamahaq",
-                    "localnames": [ "Tamahaq" ],
-                    "macrolang": "tmh",
-                    "name": "Tamahaq, Tahaggart",
-                    "names": [ "Tahaggart Tamahaq", "Tamachek", "Tamachek’", "Tamahaq", "Tamashekin", "Tamasheq", "Tomachek", "Touareg", "Tourage", "Toureg", "Tuareg" ],
-                    "region": "DZ",
-                    "regionname": "Algeria",
-                    "regions": [ "LY", "NE" ],
-                    "script": "Latn",
-                    "sldr": true,
-                    "tag": "thv",
-                    "tags": [ "thv-DZ", "thv-Latn" ],
-                    "windows": "thv-Latn"
-                },
-                {
-                    "full": "thv-Latn-DZ-x-ahaggar",
-                    "iana": [ "Tahaggart Tamahaq" ],
-                    "iso639_3": "thv",
-                    "localname": "Tamahaq",
-                    "localnames": [ "Tamahaq" ],
-                    "macrolang": "tmh",
-                    "name": "Tamahaq, Tahaggart",
-                    "names": [ "Tahaggart Tamahaq", "Tamachek", "Tamachek’", "Tamahaq", "Tamashekin", "Tamasheq", "Tomachek", "Touareg", "Tourage", "Tuareg" ],
-                    "region": "DZ",
-                    "regionname": "Algeria",
-                    "script": "Latn",
-                    "sldr": true,
-                    "tag": "thv-Latn-DZ-x-ahaggar",
-                    "windows": "thv-Latn-DZ-x-ahaggar"
-                }
-            ]"#[..];
+        let langtags_json = json!([
+            {
+                "regions": [ "AA", "AC", "AN", "AQ", "BU", "BV", "CP", "CS", "DD", "EU", "EZ", "FX", "GS", "HM", "NT", "QM", "QN", "QO", "QP", "QQ", "QR", "QS", "QT", "QU", "QV", "QW", "QX", "QY", "QZ", "SU", "TA", "TF", "TP", "UN", "XA", "XB", "XC", "XD", "XE", "XF", "XG", "XH", "XI", "XJ", "XL", "XM", "XN", "XO", "XP", "XQ", "XR", "XS", "XT", "XU", "XV", "XW", "XY", "XZ", "YD", "YU", "ZR", "ZZ" ],
+                "scripts": [ "Aran", "Cpmn", "Egyd", "Egyh", "Hira", "Hrkt", "Inds", "Jamo", "Mero", "Moon", "Pcun", "Phlv", "Psin", "Qaaa", "Qaab", "Qaac", "Qaad", "Qaae", "Qaaf", "Qaag", "Qaah", "Qaai", "Qaaj", "Qaak", "Qaal", "Qaam", "Qaan", "Qaao", "Qaap", "Qaaq", "Qaar", "Qaas", "Qaat", "Qaau", "Qaav", "Qaaw", "Qaax", "Qaay", "Qaaz", "Qaba", "Qabb", "Qabc", "Qabd", "Qabe", "Qabf", "Qabg", "Qabh", "Qabi", "Qabj", "Qabk", "Qabl", "Qabm", "Qabn", "Qabo", "Qabp", "Qabq", "Qabr", "Qabs", "Qabt", "Qabu", "Qabv", "Qabw", "Qabx", "Roro", "Shui", "Syre", "Syrn", "Visp", "Zinh", "Zmth", "Zsye", "Zsym" ],
+                "tag": "_conformance"
+            },
+            {
+                "tag": "_globalvar",
+                "variants": [ "simple" ]
+            },
+            {
+                "tag": "_phonvar",
+                "variants": [ "alalc97", "fonipa", "fonkirsh", "fonnapa", "fonupa", "fonxsamp" ]
+            },
+            {
+                "api": "1.3",
+                "date": "2023-02-20",
+                "tag": "_version"
+            },
+            {
+                "full": "aa-Latn-ET",
+                "iana": [ "Afar" ],
+                "iso639_3": "aar",
+                "localname": "Qafar",
+                "localnames": [ "Qafar af" ],
+                "name": "Afar",
+                "region": "ET",
+                "regionname": "Ethiopia",
+                "script": "Latn",
+                "sldr": true,
+                "tag": "aa",
+                "tags": [ "aa-ET", "aa-Latn" ],
+                "windows": "aa-Latn-ET"
+            },
+            {
+                "full": "aa-Arab-ET",
+                "iana": [ "Afar" ],
+                "iso639_3": "aar",
+                "name": "Afar",
+                "nophonvars": true,
+                "region": "ET",
+                "regionname": "Ethiopia",
+                "regions": [ "DJ", "ER" ],
+                "script": "Arab",
+                "sldr": false,
+                "tag": "aa-Arab",
+                "windows": "aa-Arab-ET"
+            },
+            {
+                "full": "aa-Latn-DJ",
+                "iana": [ "Afar" ],
+                "iso639_3": "aar",
+                "localname": "Qafar",
+                "localnames": [ "Qafar af" ],
+                "name": "Afar",
+                "region": "DJ",
+                "regionname": "Djibouti",
+                "script": "Latn",
+                "sldr": true,
+                "tag": "aa-DJ",
+                "windows": "aa-Latn-DJ"
+            },
+            {
+                "full": "aa-Latn-ER",
+                "iana": [ "Afar" ],
+                "iso639_3": "aar",
+                "localname": "Qafar",
+                "localnames": [ "Qafar af" ],
+                "name": "Afar",
+                "region": "ER",
+                "regionname": "Eritrea",
+                "script": "Latn",
+                "sldr": true,
+                "tag": "aa-ER",
+                "windows": "aa-Latn-ER"
+            },
+            {
+                "full": "aa-Ethi-ET",
+                "iana": [ "Afar" ],
+                "iso639_3": "aar",
+                "name": "Afar",
+                "nophonvars": true,
+                "region": "ET",
+                "regionname": "Ethiopia",
+                "regions": [ "DJ", "ER" ],
+                "script": "Ethi",
+                "sldr": false,
+                "tag": "aa-Ethi",
+                "windows": "aa-Ethi-ET"
+            },
+            {
+                "full": "eka-Latn-NG",
+                "iana": [ "Ekajuk" ],
+                "iso639_3": "eka",
+                "name": "Ekajuk",
+                "names": [ "Akajo", "Akajuk" ],
+                "region": "NG",
+                "regionname": "Nigeria",
+                "script": "Latn",
+                "sldr": true,
+                "tag": "eka",
+                "tags": [ "eka-Latn", "eka-NG" ],
+                "windows": "eka-Latn"
+            },
+            {
+                "full": "eka-Latn-NG-x-ekajuk",
+                "iana": [ "Ekajuk" ],
+                "iso639_3": "eka",
+                "name": "Ekajuk",
+                "names": [ "Akajo", "Akajuk" ],
+                "region": "NG",
+                "regionname": "Nigeria",
+                "script": "Latn",
+                "sldr": true,
+                "tag": "eka-Latn-NG-x-ekajuk",
+                "windows": "eka-Latn-NG-x-ekajuk"
+            },
+            {
+                "full": "frm-Latn-FR",
+                "iana": [ "Middle French (ca. 1400-1600)" ],
+                "iso639_3": "frm",
+                "name": "Middle French (ca. 1400-1600)",
+                "region": "FR",
+                "regionname": "France",
+                "regions": [ "BE" ],
+                "script": "Latn",
+                "sldr": false,
+                "tag": "frm",
+                "tags": [ "frm-FR", "frm-Latn" ],
+                "variants": [ "1606nict" ],
+                "windows": "frm-Latn"
+            },
+            {
+                "full": "thv-Latn-DZ",
+                "iana": [ "Tahaggart Tamahaq" ],
+                "iso639_3": "thv",
+                "localname": "Tamahaq",
+                "localnames": [ "Tamahaq" ],
+                "macrolang": "tmh",
+                "name": "Tamahaq, Tahaggart",
+                "names": [ "Tahaggart Tamahaq", "Tamachek", "Tamachek’", "Tamahaq", "Tamashekin", "Tamasheq", "Tomachek", "Touareg", "Tourage", "Toureg", "Tuareg" ],
+                "region": "DZ",
+                "regionname": "Algeria",
+                "regions": [ "LY", "NE" ],
+                "script": "Latn",
+                "sldr": true,
+                "tag": "thv",
+                "tags": [ "thv-DZ", "thv-Latn" ],
+                "windows": "thv-Latn"
+            },
+            {
+                "full": "thv-Latn-DZ-x-ahaggar",
+                "iana": [ "Tahaggart Tamahaq" ],
+                "iso639_3": "thv",
+                "localname": "Tamahaq",
+                "localnames": [ "Tamahaq" ],
+                "macrolang": "tmh",
+                "name": "Tamahaq, Tahaggart",
+                "names": [ "Tahaggart Tamahaq", "Tamachek", "Tamachek’", "Tamahaq", "Tamashekin", "Tamasheq", "Tomachek", "Touareg", "Tourage", "Tuareg" ],
+                "region": "DZ",
+                "regionname": "Algeria",
+                "script": "Latn",
+                "sldr": true,
+                "tag": "thv-Latn-DZ-x-ahaggar",
+                "windows": "thv-Latn-DZ-x-ahaggar"
+            }
+        ]).to_string();
+        let langtags_json = langtags_json.as_bytes();
         let mut expected = Profiles::new();
         expected.insert(
             "production".into(),
             Arc::new(Config {
                 sendfile_method: Some("X-Accel-Redirect".into()),
-                langtags: LangTags::from_reader(langtags_json.as_bytes())
+                langtags: LangTags::from_reader(langtags_json)
                     .expect("LangTags production test case."),
-                langtags_dir: "test/short/".into(),
+                langtags_dir: "tests/short/".into(),
                 sldr_dir: "/data/sldr/".into(),
             }),
         );
@@ -342,9 +351,9 @@ mod test {
             "staging".into(),
             Config {
                 sendfile_method: None,
-                langtags: LangTags::from_reader(langtags_json.as_bytes())
+                langtags: LangTags::from_reader(langtags_json)
                     .expect("LangTags staging test case."),
-                langtags_dir: "test/short/".into(),
+                langtags_dir: "tests/short/".into(),
                 sldr_dir: "/staging/data/sldr/".into(),
             }
             .into(),

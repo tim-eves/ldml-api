@@ -1,7 +1,7 @@
 {
     "staging": {
-        "langtags": "test/short",
-        "sldr": "test"
+        "langtags": "tests/short",
+        "sldr": "tests"
     },
     "production": {
         "sendfile_method": "X-Accel-Redirect",

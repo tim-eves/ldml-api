@@ -100,14 +100,14 @@ mod test {
 
     #[test]
     fn parse_ldml_doc() {
-        let doc = Document::new("test/en_US.xml");
+        let doc = Document::new("tests/en_US.xml");
 
         assert!(doc.is_ok());
     }
 
     #[test]
     fn find_revid() {
-        let doc = Document::new("test/en_US.xml").expect("LDML failed parse.");
+        let doc = Document::new("tests/en_US.xml").expect("LDML failed parse.");
         let revid = doc
             ._findvalue("//sil:identity/@revid")
             .expect("revid not found");
@@ -117,7 +117,7 @@ mod test {
 
     #[test]
     fn update_uid() {
-        let mut doc = Document::new("test/en_US.xml").expect("LDML failed parse.");
+        let mut doc = Document::new("tests/en_US.xml").expect("LDML failed parse.");
         doc.set_uid(012345678).expect("uid update failed.");
         let uid = doc
             ._findvalue("//sil:identity/@uid")
@@ -127,7 +127,7 @@ mod test {
 
     #[test]
     fn find_sil_kdb() {
-        let doc = Document::new("test/en_US.xml").expect("LDML failed parse.");
+        let doc = Document::new("tests/en_US.xml").expect("LDML failed parse.");
         let silkbd = doc
             ._findvalue("//sil:kbd[@id='basic_kbdusa']/sil:url")
             .expect("Value not found");
@@ -140,7 +140,7 @@ mod test {
 
     #[test]
     fn subsetting() {
-        let mut doc = Document::new("test/en_US.xml").expect("LDML failed parse.");
+        let mut doc = Document::new("tests/en_US.xml").expect("LDML failed parse.");
         doc.subset(&["metadata", "layout"])
             .expect("Subsetting failed");
 
@@ -204,7 +204,7 @@ CLDR data files are interpreted according to the LDML specification (http://unic
 
     #[test]
     fn find_identity() {
-        let doc = Document::new("test/en_US.xml").expect("LDML failed parse.");
+        let doc = Document::new("tests/en_US.xml").expect("LDML failed parse.");
         let silid = doc
             .findnodes("/ldml/*[self::identity[special/sil:identity] or self::metadata]")
             .expect("Node not found");
