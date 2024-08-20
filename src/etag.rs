@@ -1,19 +1,12 @@
-use axum::{
-    headers::{ETag, Header, HeaderMapExt, IfNoneMatch},
-    http::{Request, StatusCode},
-    middleware::Next,
-    response::Response,
-};
+use axum::{extract::Request, http::StatusCode, middleware::Next, response::Response};
+use axum_extra::headers::{ETag, Header, HeaderMapExt, IfNoneMatch};
 use std::{
     fs,
     hash::{Hash, Hasher},
     path::Path,
 };
 
-pub async fn layer<B>(req: Request<B>, next: Next<B>) -> Response
-where
-    B: Send,
-{
+pub async fn layer(req: Request, next: Next) -> Response {
     let header = req.headers().typed_get::<IfNoneMatch>();
     let mut rsp = next.run(req).await;
     let etag = rsp.headers().typed_get::<ETag>();
@@ -54,13 +47,13 @@ pub fn weaken(etag: ETag) -> ETag {
 
 pub mod revid {
     use axum::{
-        extract::Query,
-        headers::{ETag, HeaderMapExt, IfNoneMatch},
-        http::{Request, StatusCode},
+        extract::{Query, Request},
+        http::StatusCode,
         middleware::Next,
         response::{IntoResponse, Response},
         RequestExt,
     };
+    use axum_extra::headers::{ETag, HeaderMapExt, IfNoneMatch};
     use serde::Deserialize;
     use std::{
         fs::File,
@@ -87,10 +80,8 @@ pub mod revid {
         }
     }
 
-    pub async fn converter<B>(mut req: Request<B>, next: Next<B>) -> Result<Response, Response>
-    where
-        B: Send + 'static,
-    {
+    pub async fn converter(mut req: Request, next: Next) -> Result<Response, Response>
+where {
         let header = req
             .extract_parts::<Query<Param>>()
             .await

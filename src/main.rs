@@ -2,6 +2,7 @@ use std::{io, net::SocketAddr, path};
 
 use clap::Parser;
 use ldml_api::{app, config};
+use tokio::net::TcpListener;
 use tower_http::{compression::CompressionLayer, trace::TraceLayer};
 
 #[derive(Debug, Parser)]
@@ -49,16 +50,17 @@ async fn main() -> io::Result<()> {
 
     // run it with hyper on localhost:3000
     tracing::info!("listening on {addr}", addr = args.listen);
-    axum::Server::bind(&args.listen)
-        .serve(
-            app(cfg)?
-                .layer(CompressionLayer::new())
-                .layer(TraceLayer::new_for_http())
-                .into_make_service(),
-        )
-        .with_graceful_shutdown(shutdown_signal())
-        .await
-        .unwrap();
+    let listener = TcpListener::bind(&args.listen).await?;
+    axum::serve(
+        listener,
+        app(cfg)?
+            .layer(CompressionLayer::new())
+            .layer(TraceLayer::new_for_http())
+            .into_make_service(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await
+    .unwrap();
 
     tracing::info!("shutting down");
     Ok(())

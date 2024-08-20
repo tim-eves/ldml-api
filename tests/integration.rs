@@ -15,7 +15,7 @@ use std::{
     fs::File,
     io::{BufRead, BufReader},
 };
-use tower::{Service, ServiceExt}; // for `oneshot` and `ready`
+use tower::{util::ServiceExt, Service};
 
 fn get_profiles() -> &'static Profiles {
     use std::sync::OnceLock;
@@ -95,9 +95,11 @@ async fn index_page() {
             .expect("Location HTTP header value"),
         "/langtags.json?staging=1"
     );
-
-    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
-    assert_eq!(&body[..], include_str!("../src/index.html").as_bytes());
+    const INDEX_BODY: &[u8] = include_str!("../src/index.html").as_bytes();
+    let body = axum::body::to_bytes(response.into_body(), INDEX_BODY.len())
+        .await
+        .unwrap();
+    assert_eq!(&body[..], INDEX_BODY);
 }
 
 async fn request_ldml_file(app: &mut Router, tag: &Tag) -> StatusCode {
@@ -129,7 +131,9 @@ async fn query_tags() {
         .expect("Response");
     assert_eq!(response.status(), StatusCode::OK);
 
-    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let body = axum::body::to_bytes(response.into_body(), 1024)
+        .await
+        .unwrap();
     assert_eq!(
         &body[..],
         b"frm=frm-FR=frm-Latn=frm-Latn-FR\n\

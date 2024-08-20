@@ -15,11 +15,12 @@ authors = ["Tim Eves <tim_eves@sil.org>"]
 edition = "2021"
 
 [dev-dependencies]
-hyper = { version = "0.14" }
-tower = "0.4"
+hyper = { version = "1.0" }
+tower = { version = "0.5", features = ["util"]}
 
 [dependencies]
-axum = { version = "0.6", features = ["headers", "http2"]}
+axum = { version = "0.7", features = ["http2"]}
+axum-extra = { version = "0.9", features = ["typed-header"]}
 clap = { version = "4.5", features = ["derive"] }
 langtags = { version = "0", path = "./langtags" }
 language-tag = { version = "0", path = "./language-tag" }
@@ -34,4 +35,4 @@ tokio = { version = "1.39", features= ["full"] }
 tokio-util = "0.7"
 tracing = "0.1"
 tracing-subscriber = { version="0.3", features = ["env-filter"] }
-tower-http = { version = "0.4", features = ["compression-deflate", "compression-gzip", "compression-zstd","fs", "trace"] }
+tower-http = { version = "0.5", features = ["compression-deflate", "compression-gzip", "compression-zstd","fs", "trace"] }

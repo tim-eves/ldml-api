@@ -1,13 +1,13 @@
 use axum::{
-    body::StreamBody,
-    extract::{Extension, Path, Query, State},
-    headers::{ContentType, ETag, HeaderMapExt},
-    http::{header::CONTENT_DISPOSITION, HeaderMap, Request, StatusCode},
+    body::Body,
+    extract::{Extension, Path, Query, Request, State},
+    http::{header::CONTENT_DISPOSITION, HeaderMap, StatusCode},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
     routing::get,
     Router,
 };
+use axum_extra::headers::{ContentType, ETag, HeaderMapExt};
 use language_tag::Tag;
 use serde::Deserialize;
 use std::{collections::HashMap, io, iter, path, str, sync::Arc};
@@ -56,10 +56,10 @@ async fn static_help() -> impl IntoResponse {
     Html(include_str!("index.html"))
 }
 
-async fn profile_selector<B>(
+async fn profile_selector(
     State(profiles): State<Box<Profiles>>,
-    mut req: Request<B>,
-    next: Next<B>,
+    mut req: Request,
+    next: Next,
 ) -> Response {
     let config = req
         .uri()
@@ -113,9 +113,8 @@ async fn stream_file_as(
         headers.typed_insert(etag);
     }
     let stream = tokio_util::io::ReaderStream::with_capacity(file, 1 << 14); // 16KiB buffer
-    let body = StreamBody::new(stream);
 
-    Ok((headers, body))
+    Ok((headers, Body::from_stream(stream)))
 }
 
 async fn langtags(
