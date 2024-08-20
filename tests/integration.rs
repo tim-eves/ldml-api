@@ -9,6 +9,7 @@ use ldml_api::{
     app,
     config::{self, Profiles},
 };
+use serde_json::json;
 use std::str::FromStr;
 use std::{
     fs::File,
@@ -19,8 +20,14 @@ use tower::{Service, ServiceExt}; // for `oneshot` and `ready`
 fn get_profiles() -> &'static Profiles {
     use std::sync::OnceLock;
     static SHARED_PROFILES: OnceLock<Profiles> = OnceLock::new();
-    SHARED_PROFILES
-        .get_or_init(|| config::profiles::from("./ldml-api.json", "staging").expect("test config"))
+    SHARED_PROFILES.get_or_init(|| {
+        config::profiles::from_reader(
+            json!({"": {"langtags": "tests/short", "sldr": "tests"}})
+                .to_string()
+                .as_bytes(),
+        )
+        .expect("test config")
+    })
 }
 
 fn get_app() -> Router {
@@ -93,14 +100,11 @@ async fn index_page() {
     assert_eq!(&body[..], include_str!("../src/index.html").as_bytes());
 }
 
-async fn request_ldml_file(app: &mut Router, tag: &Tag, production: bool) -> StatusCode {
+async fn request_ldml_file(app: &mut Router, tag: &Tag) -> StatusCode {
     let response = app
         .oneshot(
             Request::builder()
-                .uri(format!(
-                    "/{tag}?{profile}=on",
-                    profile = if production { "production" } else { "staging" }
-                ))
+                .uri(format!("/{tag}"))
                 .body(Body::empty())
                 .expect("Request"),
         )
@@ -143,7 +147,7 @@ async fn simple_writing_system_request() {
         ($tag:literal) => {
             let tag = Tag::from_str($tag).expect("Tag");
             assert_eq!(
-                request_ldml_file(&mut app, &tag, false).await,
+                request_ldml_file(&mut app, &tag).await,
                 StatusCode::OK,
                 "NotFound: {tag}"
             );
@@ -156,7 +160,7 @@ async fn simple_writing_system_request() {
     assert_tag_exists!("eka-NG-x-ekajuk");
     assert_tag_exists!("eka-NG-x-ekajuk");
     assert_eq!(
-        request_ldml_file(&mut app, &Tag::from_str("en-KP").expect("Tag"), false).await,
+        request_ldml_file(&mut app, &Tag::from_str("en-KP").expect("Tag")).await,
         StatusCode::NOT_FOUND
     );
 }
@@ -164,13 +168,19 @@ async fn simple_writing_system_request() {
 #[ignore]
 #[tokio::test]
 async fn palaso_writing_systems_list() {
-    let mut app = get_app();
+    let mut app = app(config::profiles::from_reader(
+        json!({"": {"langtags": "data/langtags/production", "sldr": "data/sldr/production"}})
+            .to_string()
+            .as_bytes(),
+    )
+    .expect("Full SLDR config"))
+    .expect("Router");
     let tags = BufReader::new(File::open("tests/palaso-tag.list").expect("tag list"))
         .lines()
         .flatten()
         .map(|l| Tag::from_str(&l).expect("Tag"));
     for (l, tag) in tags.enumerate() {
-        let status = request_ldml_file(&mut app, &tag, true).await;
+        let status = request_ldml_file(&mut app, &tag).await;
         assert_eq!(
             status,
             StatusCode::OK,
