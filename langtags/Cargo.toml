@@ -8,7 +8,9 @@ readme = "README.md"
 authors = ["Tim Eves <tim_eves@sil.org>"]
 edition = "2021"
 
+[lib]
+
 [dependencies]
 language-tag = { version = "~0", path = "../language-tag" }
-serde = { version = "~1.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
