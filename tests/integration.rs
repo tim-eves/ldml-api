@@ -10,10 +10,11 @@ use ldml_api::{
     config::{self, Profiles},
 };
 use serde_json::json;
-use std::str::FromStr;
 use std::{
     fs::File,
     io::{BufRead, BufReader},
+    path::PathBuf,
+    str::FromStr,
 };
 use tower::{util::ServiceExt, Service};
 
@@ -179,10 +180,13 @@ async fn palaso_writing_systems_list() {
     )
     .expect("Full SLDR config"))
     .expect("Router");
-    let tags = BufReader::new(File::open("tests/palaso-tag.list").expect("tag list"))
-        .lines()
-        .flatten()
-        .map(|l| Tag::from_str(&l).expect("Tag"));
+    let tags = BufReader::new(
+        File::open(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/palaso-tag.list"))
+            .expect("tag list"),
+    )
+    .lines()
+    .flatten()
+    .map(|l| Tag::from_str(&l).expect("Tag"));
     for (l, tag) in tags.enumerate() {
         let status = request_ldml_file(&mut app, &tag).await;
         assert_eq!(

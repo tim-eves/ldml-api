@@ -1,4 +1,6 @@
-use std::{collections::HashSet as Set, fs::File, io::BufReader, iter::once, str::FromStr};
+use std::{
+    collections::HashSet as Set, fs::File, io::BufReader, iter::once, path::PathBuf, str::FromStr,
+};
 
 use langtags::{self, json::LangTags};
 use language_tag::Tag;
@@ -10,7 +12,12 @@ fn load_langtags_from_reader() -> &'static LangTags {
     use std::sync::OnceLock;
     static SHARED_LTDB: OnceLock<LangTags> = OnceLock::new();
     SHARED_LTDB.get_or_init(|| {
-        let file = File::open("tests/langtags.json").expect("open langtags.json");
+        let file = File::open(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("tests")
+                .join("langtags.json"),
+        )
+        .expect("open langtags.json");
         LangTags::from_reader(BufReader::new(file)).expect("read langtags.json")
     })
 }
