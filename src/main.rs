@@ -26,7 +26,7 @@ async fn main() -> io::Result<()> {
     // Set the RUST_LOG, if it hasn't been explicitly defined
     if cfg!(debug_assertions) && std::env::var_os("RUST_LOG").is_none() {
         tracing_subscriber::fmt()
-            .with_env_filter("ldml_api=debug,tower_http=debug")
+            .with_env_filter(concat!(env!("CARGO_CRATE_NAME"), "=debug,tower_http=debug"))
             .init();
     } else {
         tracing_subscriber::fmt::init();
