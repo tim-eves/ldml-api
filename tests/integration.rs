@@ -4,31 +4,29 @@ use axum::{
     Router,
 };
 use hyper::header::LOCATION;
+use langtags::json::LangTags;
 use language_tag::Tag;
 use ldml_api::{
     app,
     config::{self, Profiles},
 };
 use serde_json::json;
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-    path::PathBuf,
-    str::FromStr,
-};
+use std::{path::Path, str::FromStr};
 use tower::{util::ServiceExt, Service};
+
+fn parse_config(langtags: impl AsRef<Path>, sldr: impl AsRef<Path>) -> Profiles {
+    config::profiles::from_reader(
+        json!({"": {"langtags": langtags.as_ref(), "sldr": sldr.as_ref()}})
+            .to_string()
+            .as_bytes(),
+    )
+    .expect("profiles")
+}
 
 fn get_profiles() -> &'static Profiles {
     use std::sync::OnceLock;
     static SHARED_PROFILES: OnceLock<Profiles> = OnceLock::new();
-    SHARED_PROFILES.get_or_init(|| {
-        config::profiles::from_reader(
-            json!({"": {"langtags": "tests/short", "sldr": "tests"}})
-                .to_string()
-                .as_bytes(),
-        )
-        .expect("test config")
-    })
+    SHARED_PROFILES.get_or_init(|| parse_config("tests/short", "tests"))
 }
 
 fn get_app() -> Router {
@@ -170,29 +168,41 @@ async fn simple_writing_system_request() {
     );
 }
 
-#[ignore]
+fn generate_testing_tag_list(langtags: &LangTags) -> impl Iterator<Item = Tag> + '_ {
+    langtags
+        .tagsets()
+        .filter_map(|ts| ts.sldr.then(|| ts.iter()))
+        .flatten()
+        .cloned()
+}
+
+#[ignore = "requires production data set."]
 #[tokio::test]
-async fn palaso_writing_systems_list() {
-    let mut app = app(config::profiles::from_reader(
-        json!({"": {"langtags": "data/langtags/production", "sldr": "data/sldr/production"}})
-            .to_string()
-            .as_bytes(),
-    )
-    .expect("Full SLDR config"))
-    .expect("Router");
-    let tags = BufReader::new(
-        File::open(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/palaso-tag.list"))
-            .expect("tag list"),
-    )
-    .lines()
-    .flatten()
-    .map(|l| Tag::from_str(&l).expect("Tag"));
-    for (l, tag) in tags.enumerate() {
+async fn palaso_writing_systems_list_production() {
+    palaso_writing_systems_list("production").await
+}
+
+#[ignore = "requires staging data set."]
+#[tokio::test]
+async fn palaso_writing_systems_list_staging() {
+    palaso_writing_systems_list("staging").await
+}
+
+async fn palaso_writing_systems_list(profile: &str) {
+    let src_top_level = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let cfg = parse_config(
+        src_top_level.join("data/langtags").join(profile),
+        src_top_level.join("data/sldr").join(profile),
+    );
+    let mut tags = generate_testing_tag_list(&cfg[""].langtags).collect::<Vec<_>>();
+    tags.sort();
+    let mut app = app(cfg).expect("Router");
+    for (l, tag) in tags.into_iter().enumerate() {
         let status = request_ldml_file(&mut app, &tag).await;
         assert_eq!(
             status,
             StatusCode::OK,
-            "Tag {tag} at line {line}: not found",
+            "{profile}: Tag {tag} at line {line}: not found",
             line = l + 1
         );
     }

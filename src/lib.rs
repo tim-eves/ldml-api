@@ -191,7 +191,10 @@ async fn fetch_writing_system_ldml(ws: &Tag, params: WSParams, cfg: &Config) -> 
     let ext = params.ext.as_deref().unwrap_or("xml");
     let flatten = *params.flatten.unwrap_or(Toggle::ON);
 
-    tracing::debug!("find writing system in {path} with {params:?}", path=cfg.sldr_path(flatten).to_string_lossy());
+    tracing::debug!(
+        "find writing system in {path} with {params:?}",
+        path = cfg.sldr_path(flatten).to_string_lossy()
+    );
     let path = find_ldml_file(ws, &cfg.sldr_path(flatten), &cfg.langtags)
         .ok_or_else(|| (StatusCode::NOT_FOUND, format!("No LDML for {ws}")).into_response())?;
     let etag = etag::revid::from_ldml(&path).or_else(|| etag::from_metadata(&path));
