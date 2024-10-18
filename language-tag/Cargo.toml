@@ -12,4 +12,4 @@ edition = "2021"
 
 [dependencies]
 nom = "7"
-serde_with = "3.0.0"
+serde_with = { workspace = true}
