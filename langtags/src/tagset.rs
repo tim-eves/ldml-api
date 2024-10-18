@@ -1,6 +1,6 @@
 use language_tag::Tag;
 use serde::Deserialize;
-use std::{fmt::Display, iter::once, ops::Deref, path::PathBuf};
+use std::{borrow::Borrow, fmt::Display, iter::once, ops::Deref, path::PathBuf};
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
 // #[serde(default)]
@@ -102,21 +102,19 @@ impl TagSet {
     }
 }
 
-pub fn render_equivalence_set(set: impl Iter<Tag>) -> String {
-    set.map(|ref t| t.to_string())
+pub fn render_equivalence_set<I: IntoIterator>(set: I) -> String
+where
+    I::Item: Borrow<Tag>,
+{
+    set.into_iter()
+        .map(|tag| tag.borrow().to_string())
         .reduce(|set, ref tag| set + "=" + tag)
         .unwrap()
 }
 
 impl Display for TagSet {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_str(&render_equivalence_set(self.iter().cloned()))
-    }
-}
-
-impl AsRef<Tag> for TagSet {
-    fn as_ref(&self) -> &Tag {
-        &self.full
+        f.write_str(&render_equivalence_set(self.iter()))
     }
 }
 
