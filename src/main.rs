@@ -1,4 +1,4 @@
-use std::{io, net::SocketAddr, path};
+use std::{io, net::SocketAddr, ops::Not, path};
 
 use clap::Parser;
 use ldml_api::{app, config};
@@ -26,7 +26,10 @@ async fn main() -> io::Result<()> {
     // Set the RUST_LOG, if it hasn't been explicitly defined
     if cfg!(debug_assertions) && std::env::var_os("RUST_LOG").is_none() {
         tracing_subscriber::fmt()
-            .with_env_filter(concat!(env!("CARGO_CRATE_NAME"), "=debug,tower_http=debug"))
+            .with_env_filter(concat!(
+                env!("CARGO_CRATE_NAME"),
+                "=debug,tower_http=debug,axum::rejection=trace"
+            ))
             .init();
     } else {
         tracing_subscriber::fmt::init();
@@ -35,21 +38,25 @@ async fn main() -> io::Result<()> {
     let args = Args::parse();
 
     // Load configuraion
-    let cfg = config::profiles::from(&args.config, &args.profile).unwrap_or_else(|e| {
-        tracing::error!(
-            "Error: {file}: {message}",
-            file = args.config.to_string_lossy(),
-            message = e.to_string()
-        );
-        std::process::exit(e.raw_os_error().unwrap_or_default())
-    });
+    let cfg =
+        config::profiles::from(&args.config, &args.profile).unwrap_or_else(|err: io::Error| {
+            tracing::error!(
+                "Error loading config: {file}: {message}",
+                file = args.config.to_string_lossy(),
+                message = err.to_string()
+            );
+            std::process::exit(err.raw_os_error().unwrap_or_default());
+        });
     tracing::info!(
-        "loaded profiles: {profiles:?}",
-        profiles = cfg.keys().collect::<Vec<_>>()
+        "loaded profiles: {profiles}",
+        profiles = cfg
+            .keys()
+            .filter_map(|p| p.is_empty().not().then_some(p.as_ref()))
+            .collect::<Vec<_>>()
+            .join(", ")
     );
 
-    // run it with hyper on localhost:3000
-    tracing::info!("listening on {addr}", addr = args.listen);
+    tracing::debug!("listening on {addr}", addr = args.listen);
     let listener = TcpListener::bind(&args.listen).await?;
     axum::serve(
         listener,
@@ -60,7 +67,14 @@ async fn main() -> io::Result<()> {
     )
     .with_graceful_shutdown(shutdown_signal())
     .await
-    .unwrap();
+    .unwrap_or_else(|err| {
+        tracing::error!(
+            "Error starting service listenng at {addr}: {message}",
+            addr = args.listen,
+            message = err.to_string()
+        );
+        std::process::exit(err.raw_os_error().unwrap_or_default());
+    });
 
     tracing::info!("shutting down");
     Ok(())
