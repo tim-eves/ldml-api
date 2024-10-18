@@ -12,6 +12,7 @@ use language_tag::Tag;
 use serde::Deserialize;
 use std::{collections::HashMap, io, iter, path, str, sync::Arc};
 use tokio::{fs, task};
+use tracing::instrument;
 
 pub mod config;
 mod etag;
@@ -85,6 +86,7 @@ async fn stream_file(path: &path::Path) -> Result<impl IntoResponse, Response> {
     stream_file_as(path, attachment).await
 }
 
+#[instrument]
 async fn stream_file_as(
     path: &path::Path,
     filename: &path::Path,
@@ -133,7 +135,7 @@ enum LDMLQuery {
     Tags,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct QueryParams {
     _ws_id: Option<Tag>,
     query: Option<LDMLQuery>,
@@ -141,6 +143,7 @@ struct QueryParams {
     staging: Option<Toggle>,
 }
 
+#[instrument(ret)]
 async fn query_only(Query(params): Query<QueryParams>) -> impl IntoResponse {
     match params.query {
         Some(LDMLQuery::AllTags) => Err((
@@ -173,6 +176,7 @@ struct WSParams {
     uid: Option<UniqueID>,
 }
 
+#[instrument(skip(cfg))]
 async fn writing_system_tags(ws: &Tag, cfg: &Config) -> impl IntoResponse {
     query_tags(ws, &cfg.langtags).ok_or_else(|| {
         (
@@ -182,6 +186,7 @@ async fn writing_system_tags(ws: &Tag, cfg: &Config) -> impl IntoResponse {
     })
 }
 
+#[instrument(skip(cfg))]
 async fn fetch_writing_system_ldml(ws: &Tag, params: WSParams, cfg: &Config) -> impl IntoResponse {
     let ext = params.ext.as_deref().unwrap_or("xml");
     let flatten = *params.flatten.unwrap_or(Toggle::ON);
@@ -222,6 +227,7 @@ async fn fetch_writing_system_ldml(ws: &Tag, params: WSParams, cfg: &Config) -> 
     .map(|resp| (headers, resp))
 }
 
+#[instrument(skip(cfg))]
 async fn demux_writing_system(
     Path(ws): Path<Tag>,
     Query(params): Query<WSParams>,
@@ -244,6 +250,7 @@ async fn demux_writing_system(
     }
 }
 
+#[instrument(skip(langtags))]
 fn query_tags(ws: &Tag, langtags: &LangTags) -> Option<String> {
     use langtags::tagset::render_equivalence_set;
 
@@ -256,6 +263,7 @@ fn query_tags(ws: &Tag, langtags: &LangTags) -> Option<String> {
         .reduce(|resp, ref set| resp + "\n" + set)
 }
 
+#[instrument(ret, skip(langtags))]
 fn find_ldml_file(ws: &Tag, sldr_dir: &path::Path, langtags: &LangTags) -> Option<path::PathBuf> {
     // Lookup the tag set and generate a prefered sorted list.
     let tagset = langtags.orthographic_normal_form(ws)?;
@@ -273,6 +281,7 @@ fn find_ldml_file(ws: &Tag, sldr_dir: &path::Path, langtags: &LangTags) -> Optio
         .rfind(|path| path.exists())
 }
 
+#[instrument]
 async fn ldml_customisation(
     path: &path::Path,
     xpaths: Option<String>,
