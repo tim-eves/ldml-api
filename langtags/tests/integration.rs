@@ -1,33 +1,31 @@
 use std::{
-    collections::HashSet as Set, fs::File, io::BufReader, iter::once, path::PathBuf, str::FromStr,
+    collections::HashSet as Set, fs::File, io::BufReader, iter::once, path::PathBuf, str::FromStr, sync::LazyLock,
 };
 
 use langtags::{self, json::LangTags};
 use language_tag::Tag;
 
-// Load and cache the langtags.json database on demand, we use OnceLock to
+// Load the test langtags.json database.
+fn load_mock_langtags() -> LangTags {
+    let file = File::open(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("langtags.json"),
+    ).expect("open langtags.json");
+    
+    LangTags::from_reader(BufReader::new(file)).expect("read langtags.json")
+}
+
+// Initialise a shared copy of the LTDB on demand, we use LazyLock to
 // ensure only one thread ever tries to load the db, and the rest get the
 // cached copy.
-fn load_langtags_from_reader() -> &'static LangTags {
-    use std::sync::OnceLock;
-    static SHARED_LTDB: OnceLock<LangTags> = OnceLock::new();
-    SHARED_LTDB.get_or_init(|| {
-        let file = File::open(
-            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("tests")
-                .join("langtags.json"),
-        )
-        .expect("open langtags.json");
-        LangTags::from_reader(BufReader::new(file)).expect("read langtags.json")
-    })
-}
+static LTDB: LazyLock<LangTags> = LazyLock::new(load_mock_langtags);
 
 #[test]
 fn sanity_check_keyspace() {
-    let ltdb = load_langtags_from_reader();
-    // let n_globvars: usize = ltdb.variants.len();
-    // let n_phonvars: usize = ltdb.latn_variants.len();
-    let counts = ltdb.tagsets().map(|ts| {
+    // let n_globvars: usize = LTDB.variants.len();
+    // let n_phonvars: usize = LTDB.latn_variants.len();
+    let counts = LTDB.tagsets().map(|ts| {
         (2 + ts.tags.len() + ts.iter().filter(|t| t.region().is_some()).count() * ts.regions.len())
             * (1 + ts
                 .variants
@@ -40,10 +38,10 @@ fn sanity_check_keyspace() {
     });
     println!(
         "{len} records found in DB. {n_tags} tags calculated",
-        len = ltdb.tagsets().count(),
+        len = LTDB.tagsets().count(),
         n_tags = counts.clone().sum::<usize>()
     );
-    let n_tags: usize = ltdb.tagsets().zip(counts).map(|(ts, nc)| {
+    let n_tags: usize = LTDB.tagsets().zip(counts).map(|(ts, nc)| {
         let all_tags = ts.all_tags();
         let n = all_tags.clone().count();
         assert_eq!(nc, n, "TagSet {{ full: \"{}\", tag: \"{}\", tags: {:?}, regions: {:?}, variants: {:?} }}\n{}",
@@ -58,24 +56,23 @@ fn sanity_check_keyspace() {
     .sum();
     println!(
         "{len} records found in DB. {n_tags} tags counted",
-        len = ltdb.tagsets().count()
+        len = LTDB.tagsets().count()
     );
 }
 
 #[test]
 fn conformant_tag() {
-    let ltdb = load_langtags_from_reader();
-    assert_eq!(ltdb.conformant(&Tag::with_lang("en")), true);
+    assert_eq!(LTDB.conformant(&Tag::with_lang("en")), true);
     assert_eq!(
-        ltdb.conformant(&Tag::builder().lang("en").region("RU").build()),
+        LTDB.conformant(&Tag::builder().lang("en").region("RU").build()),
         true
     );
     assert_eq!(
-        ltdb.conformant(&Tag::builder().lang("en").script("Thai").build()),
+        LTDB.conformant(&Tag::builder().lang("en").script("Thai").build()),
         true
     );
     assert_eq!(
-        ltdb.conformant(
+        LTDB.conformant(
             &Tag::builder()
                 .lang("en")
                 .script("Thai")
@@ -85,7 +82,7 @@ fn conformant_tag() {
         true
     );
     assert_eq!(
-        ltdb.conformant(
+        LTDB.conformant(
             &Tag::builder()
                 .lang("en")
                 .script("Moon")
@@ -95,7 +92,7 @@ fn conformant_tag() {
         true
     );
     assert_eq!(
-        ltdb.conformant(
+        LTDB.conformant(
             &Tag::builder()
                 .lang("en")
                 .script("Thai")
@@ -105,7 +102,7 @@ fn conformant_tag() {
         false
     );
     assert_eq!(
-        ltdb.conformant(
+        LTDB.conformant(
             &Tag::builder()
                 .lang("en")
                 .script("____")
@@ -118,53 +115,52 @@ fn conformant_tag() {
 
 #[test]
 fn normal_forms() {
-    let ltdb = load_langtags_from_reader();
-    let ts = ltdb.orthographic_normal_form(&Tag::from_str("en-US").expect("Tag value"));
+    let ts = LTDB.orthographic_normal_form(&Tag::from_str("en-US").expect("Tag value"));
     assert_eq!(
         ts.expect("TagSet").full,
         Tag::from_str("en-Latn-US").unwrap()
     );
-    let ts = ltdb.orthographic_normal_form(&Tag::from_str("aeb-TN").expect("Tag value"));
+    let ts = LTDB.orthographic_normal_form(&Tag::from_str("aeb-TN").expect("Tag value"));
     assert_eq!(
         ts.expect("TagSet").full,
         Tag::from_str("aeb-Arab-TN").unwrap()
     );
-    let ts = ltdb.orthographic_normal_form(&Tag::from_str("aeb-Arab").expect("Tag value"));
+    let ts = LTDB.orthographic_normal_form(&Tag::from_str("aeb-Arab").expect("Tag value"));
     assert_eq!(
         ts.expect("TagSet").full,
         Tag::from_str("aeb-Arab-TN").unwrap()
     );
-    let ts = ltdb.orthographic_normal_form(&Tag::from_str("aeb-Hebr").expect("Tag value"));
+    let ts = LTDB.orthographic_normal_form(&Tag::from_str("aeb-Hebr").expect("Tag value"));
     assert_eq!(
         ts.expect("TagSet").full,
         Tag::from_str("aeb-Hebr-IL").unwrap()
     );
-    let ts = ltdb.orthographic_normal_form(&Tag::from_str("aeb-IL").expect("Tag value"));
+    let ts = LTDB.orthographic_normal_form(&Tag::from_str("aeb-IL").expect("Tag value"));
     assert_eq!(
         ts.expect("TagSet").full,
         Tag::from_str("aeb-Hebr-IL").unwrap()
     );
-    let ts = ltdb.orthographic_normal_form(&Tag::from_str("aeb").expect("Tag value"));
+    let ts = LTDB.orthographic_normal_form(&Tag::from_str("aeb").expect("Tag value"));
     assert_eq!(
         ts.expect("TagSet").full,
         Tag::from_str("aeb-Arab-TN").unwrap()
     );
-    let ts = ltdb.orthographic_normal_form(&Tag::from_str("en-TW").expect("Tag value"));
+    let ts = LTDB.orthographic_normal_form(&Tag::from_str("en-TW").expect("Tag value"));
     assert_eq!(
         ts.expect("TagSet").full,
         Tag::from_str("en-Latn-US").unwrap()
     );
-    let ts = ltdb.orthographic_normal_form(&Tag::from_str("en-TW-simple").expect("Tag value"));
+    let ts = LTDB.orthographic_normal_form(&Tag::from_str("en-TW-simple").expect("Tag value"));
     assert_eq!(
         ts.expect("TagSet").full,
         Tag::from_str("en-Latn-US").unwrap()
     );
-    let ts = ltdb.locale_normal_form(&Tag::from_str("en-TW").expect("Tag value"));
+    let ts = LTDB.locale_normal_form(&Tag::from_str("en-TW").expect("Tag value"));
     assert_eq!(
         ts.expect("TagSet").full,
         Tag::from_str("en-Latn-TW").unwrap()
     );
-    let ts = ltdb.locale_normal_form(&Tag::from_str("dgl-Copt").expect("Tag value"));
+    let ts = LTDB.locale_normal_form(&Tag::from_str("dgl-Copt").expect("Tag value"));
     assert_eq!(
         ts.expect("TagSet").full,
         Tag::from_str("dgl-Copt-SD-x-olnubian").unwrap()
@@ -178,7 +174,7 @@ fn normal_forms() {
 
 #[test]
 fn sanity_check_script() {
-    for ts in load_langtags_from_reader().tagsets() {
+    for ts in LTDB.tagsets() {
         // Sanity check script
         let mut computed_scripts: Set<&str> = once(&ts.tag)
             .chain(ts.tags.iter())
@@ -196,7 +192,7 @@ fn sanity_check_script() {
 
 #[test]
 fn sanity_check_regions() {
-    for ts in load_langtags_from_reader().tagsets() {
+    for ts in LTDB.tagsets() {
         // Sanity check regions
         assert!(!ts
             .regions
@@ -220,7 +216,7 @@ fn sanity_check_regions() {
 
 #[test]
 fn sanity_check_variants() {
-    for ts in load_langtags_from_reader().tagsets() {
+    for ts in LTDB.tagsets() {
         // Sanity check variants
         let name = ts.full.to_string();
         let variants: Set<&str> = ts

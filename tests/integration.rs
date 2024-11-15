@@ -11,7 +11,7 @@ use ldml_api::{
     config::{self, Profiles},
 };
 use serde_json::json;
-use std::{path::Path, str::FromStr};
+use std::{path::Path, str::FromStr, sync::LazyLock};
 use tower::{util::ServiceExt, Service};
 
 fn parse_config(langtags: impl AsRef<Path>, sldr: impl AsRef<Path>) -> Profiles {
@@ -23,14 +23,11 @@ fn parse_config(langtags: impl AsRef<Path>, sldr: impl AsRef<Path>) -> Profiles 
     .expect("profiles")
 }
 
-fn get_profiles() -> &'static Profiles {
-    use std::sync::OnceLock;
-    static SHARED_PROFILES: OnceLock<Profiles> = OnceLock::new();
-    SHARED_PROFILES.get_or_init(|| parse_config("tests/short", "tests"))
-}
+static PROFILES: LazyLock<Profiles> = LazyLock::new(|| parse_config("tests/short", "tests"));
 
+#[inline]
 fn get_app() -> Router {
-    app(get_profiles().clone()).expect("Router")
+    app(PROFILES.clone()).expect("Router")
 }
 
 #[tokio::test]

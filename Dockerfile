@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM rust:1.75 as builder
+FROM rust:1.80 as builder
 WORKDIR /usr/src/ldml-api
 COPY . .
 RUN cargo install --path .
