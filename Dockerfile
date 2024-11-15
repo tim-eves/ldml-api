@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM rust:1.75 as builder
 WORKDIR /usr/src/ldml-api
 COPY . .
@@ -6,8 +7,8 @@ RUN cargo install --path .
 FROM debian:bookworm-slim
 ENV LDML_DEFAULT_PROFILE=production
 ENV LDML_CONFIG=/var/lib/ldml-api/config.json
-RUN --mount=type=cache,target=/var/cache/apt,sharing=private \
-    --mount=type=cache,target=/var/lib/apt,sharing=private \
+RUN --mount=type=cache,target=/var/cache/apt \
+    --mount=type=cache,target=/var/lib/apt \
 <<EOT
     apt-get update
     apt-get -y install libxml2
