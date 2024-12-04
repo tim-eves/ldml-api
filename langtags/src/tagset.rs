@@ -45,46 +45,58 @@ pub struct TagSet {
     #[serde(default)]
     pub variants: Vec<String>,
 }
-pub trait Iter<T>: Iterator<Item = T> + Clone + DoubleEndedIterator {}
-impl<T> Iter<Tag> for T where T: Iterator<Item = Tag> + Clone + DoubleEndedIterator {}
-impl<'a, T> Iter<&'a Tag> for T where T: Iterator<Item = &'a Tag> + Clone + DoubleEndedIterator {}
+
+pub trait Iter: DoubleEndedIterator + Clone {}
+impl<I> Iter for I
+where
+    I::Item: Borrow<Tag>,
+    I: DoubleEndedIterator + Clone,
+{
+}
+
+pub trait SetIter: DoubleEndedIterator + Clone {}
+impl<I> SetIter for I
+where
+    I::Item: Iter,
+    <I::Item as Iterator>::Item: Borrow<Tag>,
+    I: DoubleEndedIterator + Clone,
+{
+}
 
 impl TagSet {
-    pub fn all_tags(&self) -> impl Iter<Tag> + '_ {
+    pub fn all_tags(&self) -> impl Iter<Item = Tag> + '_ {
         self.iter()
             .cloned()
             .chain(self.region_sets().flatten())
             .chain(self.variant_sets().flatten())
     }
 
-    pub fn iter(&self) -> impl Iter<&Tag> {
+    pub fn iter(&self) -> impl Iter<Item = &Tag> {
         once(&self.tag)
             .chain(self.tags.iter())
             .chain(once(&self.full))
     }
 
-    pub fn region_sets(&self) -> impl DoubleEndedIterator<Item = impl Iter<Tag> + '_> + Clone {
+    pub fn region_sets(&self) -> impl SetIter<Item = impl Iter<Item = Tag> + use<'_>> {
         let prototypes = self
             .iter()
             .filter(|tag| tag.region().is_some())
             .cloned()
             .collect::<Vec<Tag>>();
         self.regions.iter().map(move |region| {
-            prototypes.clone().into_iter().map(move |mut tag| {
+            prototypes.clone().into_iter().map(|mut tag| {
                 tag.set_region(region);
                 tag
             })
         })
     }
 
-    pub fn variant_sets(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = impl Iter<Tag> + '_> + Clone + '_ {
+    pub fn variant_sets(&self) -> impl SetIter<Item = impl Iter<Item = Tag> + use<'_>> {
         let prototypes = once(self.iter().cloned().collect::<Vec<Tag>>())
             .chain(self.region_sets().map(|rs| rs.collect::<Vec<Tag>>()));
         prototypes.flat_map(|prototype| {
             self.variants.iter().map(move |variant| {
-                prototype.clone().into_iter().map(move |mut tag| {
+                prototype.clone().into_iter().map(|mut tag| {
                     tag.push_variant(variant);
                     tag
                 })
