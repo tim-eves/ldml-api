@@ -1,5 +1,6 @@
 use std::{
-    collections::HashSet as Set, fs::File, io::BufReader, iter::once, path::PathBuf, str::FromStr, sync::LazyLock,
+    collections::HashSet as Set, fs::File, io::BufReader, iter::once, path::PathBuf, str::FromStr,
+    sync::LazyLock,
 };
 
 use langtags::{self, json::LangTags};
@@ -11,8 +12,9 @@ fn load_mock_langtags() -> LangTags {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("tests")
             .join("langtags.json"),
-    ).expect("open langtags.json");
-    
+    )
+    .expect("open langtags.json");
+
     LangTags::from_reader(BufReader::new(file)).expect("read langtags.json")
 }
 

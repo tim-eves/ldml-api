@@ -78,6 +78,28 @@ async fn profile_selector(
     next.run(req).await
 }
 
+// struct ServiceError(StatusCode, String);
+
+// impl Display for ServiceError {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         f.write_fmt(format_args!("{{\"status\": {status}, \"detail\": {detail:?}}}", status = self.0, detail = self.1))
+//     }
+// }
+
+// impl<M: AsRef<str> + ToOwned> From<(StatusCode, M)> for ServiceError {
+//     fn from((code, msg): (StatusCode, M)) -> Self {
+//         ServiceError(code, msg.as_ref().to_owned())
+//     }
+// }
+
+// impl IntoResponse for ServiceError {
+//     fn into_response(self) -> Response {
+//         (self.0,self.1).into_response()
+//     }
+// }
+
+// type ServiceResult<T> = Result<T, ServiceError>;
+
 async fn stream_file(path: &path::Path) -> Result<impl IntoResponse, Response> {
     let attachment: &path::Path = path
         .file_name()
