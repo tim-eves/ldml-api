@@ -78,22 +78,20 @@ impl TagSet {
     }
 
     pub fn region_sets(&self) -> impl SetIter<Item = impl Iter<Item = Tag> + use<'_>> {
-        let prototypes = self
-            .iter()
-            .filter(|tag| tag.region().is_some())
-            .cloned()
-            .collect::<Vec<Tag>>();
-        self.regions.iter().map(move |region| {
-            prototypes.clone().into_iter().map(|mut tag| {
-                tag.set_region(region);
-                tag
+        self.regions.iter().map(|region| {
+            self.iter().filter_map(|tag| {
+                tag.region().and(Some({
+                    let mut tag = tag.clone();
+                    tag.set_region(region);
+                    tag
+                }))
             })
         })
     }
 
     pub fn variant_sets(&self) -> impl SetIter<Item = impl Iter<Item = Tag> + use<'_>> {
         let prototypes = once(self.iter().cloned().collect::<Vec<Tag>>())
-            .chain(self.region_sets().map(|rs| rs.collect::<Vec<Tag>>()));
+            .chain(self.region_sets().map(Iterator::collect::<Vec<Tag>>));
         prototypes.flat_map(|prototype| {
             self.variants.iter().map(move |variant| {
                 prototype.clone().into_iter().map(|mut tag| {
