@@ -101,15 +101,6 @@ impl TagSet {
             })
         })
     }
-
-    pub fn sldr_file_name(&self) -> Option<PathBuf> {
-        if self.sldr {
-            let path = self.windows.to_string().replace('-', "_") + ".xml";
-            Some(path.into())
-        } else {
-            None
-        }
-    }
 }
 
 pub fn render_equivalence_set<I: IntoIterator>(set: I) -> String
