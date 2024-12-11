@@ -168,12 +168,7 @@ impl Display for TagSet {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut tagset: Vec<_> = self.iter().collect();
         tagset.sort_unstable();
-        let s = tagset
-            .iter()
-            .map(|t| t.to_string())
-            .reduce(|accum, item| accum + "=" + &item)
-            .unwrap_or_default();
-        f.write_str(&s)
+        f.write_str(&crate::tagset::render_equivalence_set(tagset))
     }
 }
 

@@ -1,6 +1,6 @@
 use language_tag::Tag;
 use serde::Deserialize;
-use std::{borrow::Borrow, fmt::Display, iter::once, ops::Deref, path::PathBuf};
+use std::{borrow::Borrow, fmt::Display, iter::once, ops::Deref};
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
 // #[serde(default)]

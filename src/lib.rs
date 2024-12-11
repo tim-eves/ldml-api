@@ -299,9 +299,8 @@ fn find_ldml_file(ws: &Tag, sldr_dir: &path::Path, langtags: &LangTags) -> Optio
 
     tags.iter()
         .map(|&tag| {
-            let mut path = path.clone();
-            path.push(tag.to_string().replace('-', "_"));
-            path.with_extension("xml")
+            path.join(tag.as_ref().replace('-', "_"))
+                .with_extension("xml")
         })
         .rfind(|path| path.exists())
 }
