@@ -437,6 +437,13 @@ impl Tag {
     }
 }
 
+impl AsRef<str> for Tag {
+    #[inline(always)]
+    fn as_ref(&self) -> &str {
+        &self.buf
+    }
+}
+
 impl Display for Tag {
     #[inline(always)]
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

@@ -143,22 +143,22 @@ impl LangTags {
         let mut key = tag.clone();
         let idx = self
             .full
-            .get(&key.to_string())
+            .get(key.as_ref())
             .or_else(|| {
                 key.set_private("");
-                self.full.get(&key.to_string())
+                self.full.get(key.as_ref())
             })
             .or_else(|| {
                 key.set_extensions([]);
-                self.full.get(&key.to_string())
+                self.full.get(key.as_ref())
             })
             .or_else(|| {
                 key.set_variants([]);
-                self.full.get(&key.to_string())
+                self.full.get(key.as_ref())
             })
             .or_else(|| {
                 key.set_region("");
-                self.full.get(&key.to_string())
+                self.full.get(key.as_ref())
             });
         let idx = *idx? as usize;
         let ts = self.tagsets.get(idx)?;
