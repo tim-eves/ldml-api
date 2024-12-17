@@ -39,8 +39,8 @@ impl LangTags {
         use serde_json::Value;
 
         let mut values: Vec<Value> = serde_json::from_reader(reader)?;
-        // This processes the everything at the start of the langtags.json file
-        // that looks like a header, stopping at the first TagSet.
+        // This processes everything at the start of the langtags.json file
+        // that matches a header, stopping at the first TagSet.
         let mut tagset_start = 0usize;
         let mut langtags = values
             .iter()

@@ -235,7 +235,7 @@ async fn fetch_writing_system_ldml(ws: &Tag, params: WSParams, cfg: &Config) -> 
                         StatusCode::INTERNAL_SERVER_ERROR,
                         "Error generating attachment filename",
                     )
-                        .into_response()
+                    .into_response()
                 })?
                 .as_ref(),
         )
