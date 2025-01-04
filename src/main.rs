@@ -1,4 +1,4 @@
-use std::{io, net::SocketAddr, ops::Not, path};
+use std::{fs::File, io, net::SocketAddr, path};
 
 use clap::Parser;
 use ldml_api::{app, config};
@@ -38,22 +38,19 @@ async fn main() -> io::Result<()> {
     let args = Args::parse();
 
     // Load configuraion
-    let cfg =
-        config::profiles::from(&args.config, &args.profile).unwrap_or_else(|err: io::Error| {
+    let cfg = config::Profiles::from_reader(File::open(&args.config)?)
+        .unwrap_or_else(|err: io::Error| {
             tracing::error!(
                 "Error loading config: {file}: {message}",
                 file = args.config.to_string_lossy(),
                 message = err.to_string()
             );
             std::process::exit(err.raw_os_error().unwrap_or_default());
-        });
+        })
+        .set_default(args.profile.as_str());
     tracing::info!(
         "loaded profiles: {profiles}",
-        profiles = cfg
-            .keys()
-            .filter_map(|p| p.is_empty().not().then_some(p.as_ref()))
-            .collect::<Vec<_>>()
-            .join(", ")
+        profiles = cfg.names().collect::<Vec<&str>>().join(", ")
     );
 
     tracing::debug!("listening on {addr}", addr = args.listen);

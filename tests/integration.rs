@@ -15,12 +15,13 @@ use std::{path::Path, str::FromStr, sync::LazyLock};
 use tower::{util::ServiceExt, Service};
 
 fn parse_config(langtags: impl AsRef<Path>, sldr: impl AsRef<Path>) -> Profiles {
-    config::profiles::from_reader(
-        json!({"": {"langtags": langtags.as_ref(), "sldr": sldr.as_ref()}})
+    config::Profiles::from_reader(
+        json!({"test": {"langtags": langtags.as_ref(), "sldr": sldr.as_ref()}})
             .to_string()
             .as_bytes(),
     )
     .expect("profiles")
+    .set_default("test")
 }
 
 static PROFILES: LazyLock<Profiles> = LazyLock::new(|| parse_config("tests/short", "tests"));
@@ -114,12 +115,12 @@ async fn status_page() {
 
     assert_eq!(response.status(), StatusCode::OK);
 
-    let profile = PROFILES[""].clone();
+    let profile = PROFILES["test"].clone();
     let status_body = json!({
         "service": env!("CARGO_PKG_NAME"),
         "version": env!("CARGO_PKG_VERSION"),
         "profiles": {
-            "": { "langtags": {
+            "test": { "langtags": {
                     "api": profile.langtags.api_version(),
                     "date": profile.langtags.date(),
                     "tagsets": profile.langtags.len()
@@ -226,7 +227,7 @@ async fn palaso_writing_systems_list(profile: &str) {
         src_top_level.join("data/langtags").join(profile),
         src_top_level.join("data/sldr").join(profile),
     );
-    let mut tags = generate_testing_tag_list(&cfg[""].langtags).collect::<Vec<_>>();
+    let mut tags = generate_testing_tag_list(&cfg["test"].langtags).collect::<Vec<_>>();
     tags.sort();
     let mut app = app(cfg).expect("Router");
     for (l, tag) in tags.into_iter().enumerate() {

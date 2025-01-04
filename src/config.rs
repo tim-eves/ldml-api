@@ -1,5 +1,13 @@
 use langtags::json::LangTags;
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use serde_json::Value;
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{self, BufReader, Read},
+    ops::Index,
+    path::PathBuf,
+    sync::Arc,
+};
 
 #[derive(Debug, PartialEq)]
 pub struct Config {
@@ -15,32 +23,39 @@ impl Config {
     }
 }
 
-pub type Profiles = HashMap<String, Arc<Config>>;
+#[derive(Clone)]
+pub struct Profiles {
+    inner: ProfilesInner,
+    default: Option<Arc<Config>>,
+}
 
-pub mod profiles {
-    use super::{Config, LangTags, Profiles};
-    use serde_json::Value;
-    use std::{
-        fs::File,
-        io::{self, BufReader, Read},
-        path::{Path, PathBuf},
-    };
+type ProfilesInner = HashMap<String, Arc<Config>>;
 
-    pub fn from<P, S>(path: P, default: S) -> io::Result<Profiles>
+impl Index<&str> for Profiles {
+    type Output = Arc<Config>;
+
+    fn index(&self, index: &str) -> &Self::Output {
+        self.get(index).expect("no config found for profile")
+    }
+}
+
+impl Profiles {
+    pub fn set_default<S>(mut self, default: impl Into<Option<S>>) -> Self
     where
-        P: AsRef<Path>,
         S: AsRef<str>,
     {
-        let mut profiles = from_reader(File::open(path)?)?;
-        let default = default.as_ref();
-        if !default.is_empty() {
-            profiles.insert("".into(), profiles[default].clone());
-        }
-        Ok(profiles)
+        self.default = default
+            .into()
+            .and_then(|s| Some(self.inner.get(s.as_ref())?.clone()));
+        self
     }
 
     fn into_parse_error(msg: &str) -> io::Error {
         io::Error::new(io::ErrorKind::InvalidData, format!("parse failed: {msg}"))
+    }
+
+    pub fn get(&self, profile: &str) -> Option<&Arc<Config>> {
+        self.inner.get(profile).or(self.default.as_ref())
     }
 
     pub fn from_reader<R: Read>(reader: R) -> io::Result<Profiles> {
@@ -48,8 +63,8 @@ pub mod profiles {
 
         let profiles = cfg
             .as_object()
-            .ok_or_else(|| into_parse_error("profile map"))?;
-        let mut configs = Profiles::with_capacity(profiles.len());
+            .ok_or_else(|| Self::into_parse_error("profile map"))?;
+        let mut configs = ProfilesInner::with_capacity(profiles.len());
         // Read defined profiles
         for (name, v) in profiles.iter() {
             let mut sendfile_method = Default::default();
@@ -57,7 +72,7 @@ pub mod profiles {
             let mut sldr_dir = Default::default();
 
             v.as_object()
-                .ok_or_else(|| into_parse_error("config object"))
+                .ok_or_else(|| Self::into_parse_error("config object"))
                 .and_then(|tbl| {
                     sendfile_method = tbl
                         .get("sendfile_method")
@@ -66,11 +81,11 @@ pub mod profiles {
                     sldr_dir = tbl["sldr"]
                         .as_str()
                         .map(PathBuf::from)
-                        .ok_or_else(|| into_parse_error("sldr path"))?;
+                        .ok_or_else(|| Self::into_parse_error("sldr path"))?;
                     langtags_dir = tbl["langtags"]
                         .as_str()
                         .map(PathBuf::from)
-                        .ok_or_else(|| into_parse_error("sldr path"))?;
+                        .ok_or_else(|| Self::into_parse_error("sldr path"))?;
                     Ok(())
                 })?;
 
@@ -81,7 +96,7 @@ pub mod profiles {
                     file = langtags_path.to_string_lossy(),
                     message = e.to_string()
                 );
-                into_parse_error("langtags path")
+                Self::into_parse_error("langtags path")
             })?);
             let langtags = LangTags::from_reader(reader)?;
 
@@ -97,27 +112,31 @@ pub mod profiles {
             );
         }
 
-        Ok(configs)
+        Ok(Profiles {
+            inner: configs,
+            default: None,
+        })
+    }
+
+    #[inline]
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &Arc<Config>)> + use<'_> {
+        self.inner.iter()
+    }
+
+    #[inline]
+    pub fn names(&self) -> impl Iterator<Item = &str> + use<'_> {
+        self.inner.keys().map(String::as_str)
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::{profiles, Arc, Config, LangTags, Profiles};
+    use super::{Arc, Config, LangTags, Profiles, ProfilesInner};
     use serde_json::json;
 
     #[test]
-    fn missing_config() {
-        let res = profiles::from("test/missing-config.json", "");
-        assert_eq!(
-            res.err().expect("io::Error: Not found.").kind(),
-            std::io::ErrorKind::NotFound
-        );
-    }
-
-    #[test]
     fn unreadable_config() {
-        let res = profiles::from_reader(&br"hang on this isn't JSON!"[..])
+        let res = Profiles::from_reader(&br"hang on this isn't JSON!"[..])
             .err()
             .expect("io::Error: Invlalid data.");
         assert_eq!(res.kind(), std::io::ErrorKind::InvalidData);
@@ -126,7 +145,7 @@ mod test {
 
     #[test]
     fn missing_langtags() {
-        let res = profiles::from_reader(
+        let res = Profiles::from_reader(
             json!(
                 {
                     "staging": {
@@ -150,7 +169,7 @@ mod test {
 
     #[test]
     fn valid_langtags() {
-        let res = profiles::from_reader(
+        let res = Profiles::from_reader(
             json!(
                 {
                     "staging": {
@@ -336,7 +355,7 @@ mod test {
             }
         ]).to_string();
         let langtags_json = langtags_json.as_bytes();
-        let mut expected = Profiles::new();
+        let mut expected = ProfilesInner::new();
         expected.insert(
             "production".into(),
             Arc::new(Config {
@@ -359,6 +378,6 @@ mod test {
             .into(),
         );
 
-        assert_eq!(res, expected);
+        assert_eq!(res.inner, expected);
     }
 }
