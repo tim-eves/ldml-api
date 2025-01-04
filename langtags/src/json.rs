@@ -208,6 +208,22 @@ impl LangTags {
     pub fn tagsets(&self) -> impl DoubleEndedIterator<Item = &TagSet> + Clone {
         self.tagsets.iter()
     }
+
+    #[inline(always)]
+    pub fn api_version(&self) -> &str {
+        &self.version
+    }
+
+    #[inline(always)]
+    pub fn date(&self) -> &str {
+        &self.date
+    }
+
+    #[inline(always)]
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        self.tagsets.len()
+    }
 }
 
 #[cfg(test)]

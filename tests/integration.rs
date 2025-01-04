@@ -91,11 +91,46 @@ async fn index_page() {
             .expect("Location HTTP header value"),
         "/langtags.json?staging=1"
     );
-    const INDEX_BODY: &[u8] = include_str!("../src/index.html").as_bytes();
+    const INDEX_BODY: &str = include_str!("../src/index.html");
     let body = axum::body::to_bytes(response.into_body(), INDEX_BODY.len())
         .await
-        .unwrap();
-    assert_eq!(&body[..], INDEX_BODY);
+        .expect("Index page body");
+    assert_eq!(std::str::from_utf8(&body), Ok(INDEX_BODY));
+}
+
+#[tokio::test]
+async fn status_page() {
+    let mut app = get_app();
+
+    let response = app
+        .call(
+            Request::builder()
+                .uri("/status")
+                .body(Body::empty())
+                .expect("Request"),
+        )
+        .await
+        .expect("Response");
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let profile = PROFILES[""].clone();
+    let status_body = json!({
+        "service": env!("CARGO_PKG_NAME"),
+        "version": env!("CARGO_PKG_VERSION"),
+        "profiles": {
+            "": { "langtags": {
+                    "api": profile.langtags.api_version(),
+                    "date": profile.langtags.date(),
+                    "tagsets": profile.langtags.len()
+                }}
+        }
+    })
+    .to_string();
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("Status body");
+    assert_eq!(std::str::from_utf8(&body), Ok(status_body.as_str()));
 }
 
 async fn request_ldml_file(app: &mut Router, tag: &Tag) -> StatusCode {

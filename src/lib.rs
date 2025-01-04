@@ -5,7 +5,7 @@ use axum::{
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
     routing::get,
-    Router,
+    Json, Router,
 };
 use axum_extra::headers::{ContentType, ETag, HeaderMapExt};
 use language_tag::Tag;
@@ -39,6 +39,7 @@ use toggle::Toggle;
 use unique_id::UniqueID;
 
 pub fn app(cfg: Profiles) -> io::Result<Router> {
+    let status_response = status(&cfg);
     Ok(Router::new()
         .route("/langtags.:ext", get(langtags))
         .route(
@@ -50,7 +51,31 @@ pub fn app(cfg: Profiles) -> io::Result<Router> {
         .layer(middleware::from_fn_with_state(cfg.into(), profile_selector))
         .route("/", get(query_only))
         .route("/index.html", get(query_only))
+        .route("/status", get(move || async { status_response }))
         .fallback(query_only))
+}
+
+fn status(profiles: &Profiles) -> impl IntoResponse + Clone {
+    use serde_json::{json, Value};
+
+    let profiles = Value::from_iter(profiles.iter().map(|(profile, config)| {
+        let mut obj = json!({"langtags": {
+            "api": config.langtags.api_version(),
+            "date": config.langtags.date(),
+            "tagsets": config.langtags.len()
+        }});
+        if let Some(method) = config.sendfile_method.as_deref() {
+            obj.as_object_mut()
+                .unwrap()
+                .insert("sendfile".into(), method.into());
+        }
+        (profile, obj)
+    }));
+    Json(json!({
+        "service": env!("CARGO_PKG_NAME"),
+        "version": env!("CARGO_PKG_VERSION"),
+        "profiles": profiles
+    }))
 }
 
 async fn static_help() -> impl IntoResponse {
@@ -235,7 +260,7 @@ async fn fetch_writing_system_ldml(ws: &Tag, params: WSParams, cfg: &Config) -> 
                         StatusCode::INTERNAL_SERVER_ERROR,
                         "Error generating attachment filename",
                     )
-                    .into_response()
+                        .into_response()
                 })?
                 .as_ref(),
         )
