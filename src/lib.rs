@@ -41,9 +41,9 @@ use unique_id::UniqueID;
 pub fn app(cfg: Profiles) -> io::Result<Router> {
     let status_response = status(&cfg);
     Ok(Router::new()
-        .route("/langtags.:ext", get(langtags))
+        .route("/langtags.{ext}", get(langtags))
         .route(
-            "/:ws_id",
+            "/{ws_id}",
             get(demux_writing_system)
                 .layer(middleware::from_fn(etag::layer))
                 .layer(middleware::from_fn(etag::revid::converter)),
