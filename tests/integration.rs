@@ -1,6 +1,7 @@
 use axum::{
     body::Body,
     http::{Request, StatusCode},
+    response::Response,
     Router,
 };
 use hyper::header::LOCATION;
@@ -97,6 +98,103 @@ async fn index_page() {
         .await
         .expect("Index page body");
     assert_eq!(std::str::from_utf8(&body), Ok(INDEX_BODY));
+}
+
+#[tokio::test]
+async fn langtags_ext() {
+    let mut app = get_app();
+
+    let json_response = app
+        .call(
+            Request::builder()
+                .uri("/langtags.json")
+                .body(Body::empty())
+                .expect("Request"),
+        )
+        .await
+        .expect("Response");
+
+    let txt_response = app
+        .call(
+            Request::builder()
+                .uri("/langtags.txt")
+                .body(Body::empty())
+                .expect("Request"),
+        )
+        .await
+        .expect("Response");
+
+    let json_response_staging = app
+        .call(
+            Request::builder()
+                .uri("/langtags.json?test=1")
+                .body(Body::empty())
+                .expect("Request"),
+        )
+        .await
+        .expect("Response");
+
+    let txt_response_staging = app
+        .call(
+            Request::builder()
+                .uri("/langtags.txt?test=1")
+                .body(Body::empty())
+                .expect("Request"),
+        )
+        .await
+        .expect("Response");
+
+    let notfound_response = app
+        .oneshot(
+            Request::builder()
+                .uri("/langtags.html")
+                .body(Body::empty())
+                .expect("Request"),
+        )
+        .await
+        .expect("Response");
+
+    #[inline]
+    async fn response_to_str(resp: Response) -> String {
+        String::from_utf8(
+            axum::body::to_bytes(resp.into_body(), usize::MAX)
+                .await
+                .unwrap()
+                .to_vec(),
+        )
+        .unwrap()
+    }
+
+    assert_eq!(
+        json_response.status(),
+        StatusCode::OK,
+        "Body: {}",
+        response_to_str(json_response).await
+    );
+    assert_eq!(
+        txt_response.status(),
+        StatusCode::OK,
+        "Body: {}",
+        response_to_str(txt_response).await
+    );
+    assert_eq!(
+        json_response_staging.status(),
+        StatusCode::OK,
+        "Body: {}",
+        response_to_str(json_response_staging).await
+    );
+    assert_eq!(
+        txt_response_staging.status(),
+        StatusCode::OK,
+        "Body: {}",
+        response_to_str(txt_response_staging).await
+    );
+    assert_eq!(
+        notfound_response.status(),
+        StatusCode::NOT_FOUND,
+        "Body: {}",
+        response_to_str(notfound_response).await
+    );
 }
 
 #[tokio::test]

@@ -2,10 +2,10 @@ use language_tag::Tag;
 use serde::Deserialize;
 use std::{borrow::Borrow, fmt::Display, iter::once, ops::Deref};
 
-#[cfg(not(feature = "compact"))]
-use std::string::String as StringRepr;
 #[cfg(feature = "compact")]
 use compact_str::CompactString as StringRepr;
+#[cfg(not(feature = "compact"))]
+use std::string::String as StringRepr;
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
 // #[serde(default)]
@@ -115,7 +115,8 @@ where
     set.into_iter()
         .map(|tag| tag.as_ref().into())
         .reduce(|set: StringRepr, ref tag: StringRepr| set + "=" + tag)
-        .unwrap().into()
+        .unwrap()
+        .into()
 }
 
 impl Display for TagSet {

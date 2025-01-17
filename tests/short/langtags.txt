@@ -1,0 +1,10 @@
+*aa = *aa-ET = aa-Latn = aa-Latn-ET
+aa-Arab = aa-Arab-ET
+*aa-DJ = aa-Latn-DJ
+*aa-ER = aa-Latn-ER
+aa-Ethi = aa-Ethi-ET
+*eka = eka-Latn = eka-NG = eka-Latn-NG
+*eka-Latn-NG-x-ekajuk
+frm = frm-FR = frm-Latn = frm-Latn-FR
+*thv = thv-DZ = thv-Latn = thv-Latn-DZ
+*thv-Latn-DZ-x-ahaggar
