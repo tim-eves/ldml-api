@@ -32,7 +32,7 @@ fn sanity_check_keyspace() {
             * (1 + ts
                 .variants
                 .iter()
-                .map(String::as_str)
+                .map(|s| s.as_str())
                 .filter(|&v| ts.iter().all(|t| !t.variants().any(|x| x == v)))
                 .count())
         // * (1 + n_globvars)
@@ -60,6 +60,18 @@ fn sanity_check_keyspace() {
         "{len} records found in DB. {n_tags} tags counted",
         len = LTDB.tagsets().count()
     );
+}
+
+#[test]
+#[cfg(feature = "compact")]
+fn sanity_check_inlining() {
+    let total = LTDB.tagsets().flat_map(|ts| ts.iter()).count();
+    let inlined = LTDB
+        .tagsets()
+        .flat_map(|ts| ts.iter())
+        .filter(|t| t.as_ref().len() < 25 && !t.is_heap_allocated())
+        .count();
+    println!("{inlined} tags stored inlined in DB, out of {total}",);
 }
 
 #[test]
@@ -198,11 +210,11 @@ fn sanity_check_regions() {
         // Sanity check regions
         assert!(!ts
             .regions
-            .contains(&ts.region().expect("region missing.").to_owned()));
+            .contains(&ts.region().expect("region missing.").into()));
         let regions: Set<&str> = ts
             .regions
             .iter()
-            .map(String::as_str)
+            .map(|s| s.as_str())
             .chain(ts.region())
             .collect();
         let computed_regions: Set<&str> = ts.iter().flat_map(|t| t.region()).collect();
@@ -224,7 +236,7 @@ fn sanity_check_variants() {
         let variants: Set<&str> = ts
             .variants
             .iter()
-            .map(String::as_str)
+            .map(|s| s.as_str())
             .chain(ts.full.variants())
             .collect();
 
@@ -235,7 +247,7 @@ fn sanity_check_variants() {
             "Ovelapping variants in tagset {name} between full tag & varaints list: {:?}",
             ts.variants
                 .iter()
-                .map(String::as_str)
+                .map(|s| s.as_str())
                 .collect::<Set<&str>>()
                 .intersection(&ts.full.variants().collect())
         );

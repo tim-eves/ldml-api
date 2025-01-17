@@ -5,7 +5,7 @@ members = [
 ]
 
 [workspace.dependencies]
-language-tag = { version = "0", path = "./language-tag", features = ["serde"] }
+language-tag = { version = "0", path = "./language-tag", features = ["serde", "compact"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
@@ -27,7 +27,7 @@ tower = { version = "0.5", features = ["util"]}
 axum = { version = "0.7", features = ["http2"]}
 axum-extra = { version = "0.9", features = ["typed-header"]}
 clap = { version = "4.5", features = ["derive"] }
-langtags = { version = "0", path = "./langtags" }
+langtags = { version = "0", path = "./langtags", features = ["compact"] }
 language-tag = { workspace = true }
 libxml = { version = "0.3"}
 mime_guess = "2.0"

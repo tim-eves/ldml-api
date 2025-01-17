@@ -10,7 +10,11 @@ edition = "2021"
 
 [lib]
 
+[features]
+compact = ["dep:compact_str", "language-tag/compact"]
+
 [dependencies]
+compact_str = { version = "0.8", features = ["serde"], optional = true }
 language-tag = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

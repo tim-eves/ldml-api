@@ -2,40 +2,45 @@ use language_tag::Tag;
 use serde::Deserialize;
 use std::{borrow::Borrow, fmt::Display, iter::once, ops::Deref};
 
+#[cfg(not(feature = "compact"))]
+use std::string::String as StringRepr;
+#[cfg(feature = "compact")]
+use compact_str::CompactString as StringRepr;
+
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
 // #[serde(default)]
 pub struct TagSet {
     // Required keys
     pub full: Tag,
     #[serde(default)]
-    pub iana: Vec<String>,
+    pub iana: Vec<StringRepr>,
     pub sldr: bool,
     pub tag: Tag,
     pub windows: Tag,
 
     // Defaultable keys
     #[serde(default)]
-    pub iso639_3: String,
+    pub iso639_3: StringRepr,
     #[serde(default)]
-    pub latnnames: Vec<String>,
+    pub latnnames: Vec<StringRepr>,
     #[serde(default)]
-    pub localname: String,
+    pub localname: StringRepr,
     #[serde(default)]
-    pub localnames: Vec<String>,
+    pub localnames: Vec<StringRepr>,
     #[serde(default)]
-    pub name: String,
+    pub name: StringRepr,
     #[serde(default)]
-    pub names: Vec<String>,
+    pub names: Vec<StringRepr>,
     #[serde(default)]
     pub nophonvars: bool,
     #[serde(default)]
     pub obsolete: bool,
     #[serde(default)]
-    pub regionname: String,
+    pub regionname: StringRepr,
     #[serde(default)]
-    pub regions: Vec<String>,
+    pub regions: Vec<StringRepr>,
     #[serde(default)]
-    pub rod: String,
+    pub rod: StringRepr,
     #[serde(default)]
     pub suppress: bool,
     #[serde(default)]
@@ -43,7 +48,7 @@ pub struct TagSet {
     #[serde(default)]
     pub unwritten: bool,
     #[serde(default)]
-    pub variants: Vec<String>,
+    pub variants: Vec<StringRepr>,
 }
 
 pub trait Iter: DoubleEndedIterator + Clone {}
@@ -103,14 +108,14 @@ impl TagSet {
     }
 }
 
-pub fn render_equivalence_set<I: IntoIterator>(set: I) -> String
+pub fn render_equivalence_set<I>(set: I) -> String
 where
-    I::Item: Borrow<Tag>,
+    I: IntoIterator<Item: AsRef<str>>,
 {
     set.into_iter()
-        .map(|tag| tag.borrow().to_string())
-        .reduce(|set, ref tag| set + "=" + tag)
-        .unwrap()
+        .map(|tag| tag.as_ref().into())
+        .reduce(|set: StringRepr, ref tag: StringRepr| set + "=" + tag)
+        .unwrap().into()
 }
 
 impl Display for TagSet {

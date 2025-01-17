@@ -12,6 +12,7 @@ edition = "2021"
 
 [features]
 serde = ["dep:serde_with", "compact_str?/serde"]
+compact = ["dep:compact_str"]
 
 [dev-dependencies]
 serde_json = { workspace = true }
@@ -19,3 +20,4 @@ serde_json = { workspace = true }
 [dependencies]
 nom = "7"
 serde_with = { version = "3.11", optional = true }
+compact_str = { version = "0.8", optional = true }

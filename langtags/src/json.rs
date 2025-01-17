@@ -6,31 +6,36 @@ use std::{
     io::{self, BufRead},
 };
 
+#[cfg(feature = "compact")]
+use compact_str::CompactString as StringRepr;
+#[cfg(not(feature = "compact"))]
+use std::string::String as StringRepr;
+
 #[derive(Debug, Default, PartialEq)]
 pub struct LangTags {
-    version: String,
-    date: String,
-    scripts: Set<String>,
-    regions: Set<String>,
-    variants: Set<String>,
-    latn_variants: Set<String>,
+    version: StringRepr,
+    date: StringRepr,
+    scripts: Set<StringRepr>,
+    regions: Set<StringRepr>,
+    variants: Set<StringRepr>,
+    latn_variants: Set<StringRepr>,
     tagsets: Vec<TagSet>,
-    full: Map<String, u32>,
+    full: Map<StringRepr, u32>,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq)]
 #[serde(tag = "tag")]
 enum Header {
     #[serde(rename = "_globalvar")]
-    GlobalVar { variants: Set<String> },
+    GlobalVar { variants: Set<StringRepr> },
     #[serde(rename = "_phonvar")]
-    PhonVar { variants: Set<String> },
+    PhonVar { variants: Set<StringRepr> },
     #[serde(rename = "_version")]
-    Version { api: String, date: String },
+    Version { api: StringRepr, date: StringRepr },
     #[serde(rename = "_conformance")]
     Conformance {
-        scripts: Vec<String>,
-        regions: Vec<String>,
+        scripts: Vec<StringRepr>,
+        regions: Vec<StringRepr>,
     },
 }
 
@@ -81,9 +86,9 @@ impl LangTags {
     fn build_caches(&mut self) {
         for (i, ts) in self.tagsets.iter().enumerate() {
             self.full
-                .extend(ts.iter().map(|tag| (tag.to_string(), i as u32)));
-            self.scripts.insert(ts.script().unwrap().to_owned());
-            self.regions.insert(ts.region().unwrap().to_owned());
+                .extend(ts.iter().map(|tag| (tag.as_ref().into(), i as u32)));
+            self.scripts.insert(ts.script().unwrap().into());
+            self.regions.insert(ts.region().unwrap().into());
             self.regions.extend(ts.regions.iter().cloned());
         }
     }
@@ -110,7 +115,7 @@ impl LangTags {
 
     fn valid_region(ts: &TagSet, region: Option<&str>) -> bool {
         if let Some(region) = region {
-            ts.region() == Some(region) || ts.regions.contains(&region.to_owned())
+            ts.region() == Some(region) || ts.regions.contains(&region.into())
         } else {
             true
         }
@@ -119,7 +124,7 @@ impl LangTags {
     fn valid_variants(&self, ts: &TagSet, tag: &Tag) -> bool {
         !tag.has_variants()
             || tag.variants().all(|v| {
-                let v = v.to_owned();
+                let v = v.into();
                 ts.variants.contains(&v)
                     || self.variants.contains(&v)
                     || (!ts.nophonvars
@@ -183,7 +188,7 @@ impl LangTags {
             let mut ts = ortho_tagset.clone();
             if let Some(region) = tag.region() {
                 let ri = ts.regions.iter().position(|x| x == region).unwrap();
-                ts.regions[ri] = ts.region().unwrap().to_owned();
+                ts.regions[ri] = ts.region().unwrap().into();
                 ts.full.set_region(region);
                 ts.tag.set_region(region);
                 for i in (0..ts.tags.len()).rev() {

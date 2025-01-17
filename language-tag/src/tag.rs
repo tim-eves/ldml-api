@@ -7,6 +7,11 @@ use std::{
     num::NonZeroUsize,
     str::SplitTerminator,
 };
+
+#[cfg(feature = "compact")]
+use compact_str::CompactString as TagBuffer;
+#[cfg(not(feature = "compact"))]
+use std::string::String as TagBuffer;
 #[cfg(feature = "serde")]
 use {serde_with::DeserializeFromStr, serde_with::SerializeDisplay};
 
@@ -49,7 +54,7 @@ impl Offsets {
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(DeserializeFromStr, SerializeDisplay))]
 pub struct Tag {
-    buf: String,
+    buf: TagBuffer,
     end: Offsets,
 }
 
@@ -118,7 +123,7 @@ impl Tag {
                     .unwrap_or_default() as u8;
 
             Tag {
-                buf: full.to_owned(),
+                buf: full.into(),
                 end,
             }
         }
@@ -178,7 +183,7 @@ impl Tag {
     pub fn with_lang(lang: impl AsRef<str>) -> Self {
         let len = lang.as_ref().len() as u8;
         Tag {
-            buf: lang.as_ref().to_owned(),
+            buf: lang.as_ref().into(),
             end: Offsets {
                 lang: len,
                 script: len,
@@ -192,7 +197,7 @@ impl Tag {
     #[inline]
     pub fn privateuse(private: impl AsRef<str>) -> Self {
         Tag {
-            buf: private.as_ref().to_owned(),
+            buf: private.as_ref().into(),
             end: Default::default(),
         }
     }
@@ -286,7 +291,7 @@ impl Tag {
     pub fn pop_variant(&mut self) -> Option<String> {
         let old = self.buf.len() as isize;
         let mut range = _component_range!(self, variants);
-        let variant = self.buf[range.clone()].rsplit_once('-')?.1.to_owned();
+        let variant = self.buf[range.clone()].rsplit_once('-')?.1.to_string();
         range.start = range.end - variant.len() - 1;
         self.buf.replace_range(range, "");
         self.end.adjust_variants(self.buf.len() as isize - old);
@@ -436,6 +441,12 @@ impl Tag {
     #[inline]
     pub fn is_privateuse(&self) -> bool {
         self.end.extensions == 0 && !self.buf.is_empty()
+    }
+
+    #[inline]
+    #[cfg(feature = "compact")]
+    pub fn is_heap_allocated(&self) -> bool {
+        self.buf.is_heap_allocated()
     }
 }
 
@@ -757,5 +768,19 @@ mod tests {
                 }
             }
         );
+    }
+
+    #[test]
+    #[cfg(feature = "compact")]
+    fn compact_string() {
+        use std::str::FromStr;
+
+        let tag = Tag::from_str("en-Latn-US").unwrap();
+        assert!(tag.buf.len() < 24);
+        assert!(!tag.is_heap_allocated());
+
+        let tag = Tag::from_str("eng-Latn-US-x-test1-test2").unwrap();
+        assert!(tag.buf.len() >= 24);
+        assert!(tag.is_heap_allocated())
     }
 }
