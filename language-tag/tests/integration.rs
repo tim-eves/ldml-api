@@ -276,3 +276,29 @@ fn setters() {
     tag.set_script("");
     assert_eq!(tag, Tag::with_lang("en"));
 }
+
+#[cfg(feature = "serde")]
+mod serde {
+    use super::Tag;
+    use serde_json;
+    use std::str::FromStr;
+
+    #[test]
+    fn serialize() {
+        let tag = Tag::from_str("en-Latn-US-1abc-a-abcdef-x-priv").unwrap();
+        assert_eq!(
+            "\"en-Latn-US-1abc-a-abcdef-x-priv\"",
+            serde_json::to_string(&tag).expect("could not serialize Tag")
+        )
+    }
+
+    #[test]
+    fn deserialize() {
+        let tag = Tag::from_str("en-Latn-US-1abc-a-abcdef-x-priv").unwrap();
+        assert_eq!(
+            tag,
+            serde_json::from_str("\"en-Latn-US-1abc-a-abcdef-x-priv\"")
+                .expect("could not deserialize Tag")
+        )
+    }
+}

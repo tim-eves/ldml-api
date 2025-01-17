@@ -1,6 +1,5 @@
 use crate::Builder;
 use core::panic;
-use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::{
     fmt::{Display, Write},
     hash::Hash,
@@ -8,6 +7,8 @@ use std::{
     num::NonZeroUsize,
     str::SplitTerminator,
 };
+#[cfg(feature = "serde")]
+use {serde_with::DeserializeFromStr, serde_with::SerializeDisplay};
 
 #[derive(Clone, Debug, Default)]
 struct Offsets {
@@ -45,7 +46,8 @@ impl Offsets {
     }
 }
 
-#[derive(Clone, Debug, Default, DeserializeFromStr, SerializeDisplay)]
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(DeserializeFromStr, SerializeDisplay))]
 pub struct Tag {
     buf: String,
     end: Offsets,

@@ -10,6 +10,12 @@ edition = "2021"
 
 [lib]
 
+[features]
+serde = ["dep:serde_with", "compact_str?/serde"]
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
 [dependencies]
 nom = "7"
-serde_with = { workspace = true}
+serde_with = { version = "3.11", optional = true }
