@@ -10,7 +10,7 @@ use axum::{
 use axum_extra::headers::{ContentType, ETag, HeaderMapExt};
 use language_tag::Tag;
 use serde::Deserialize;
-use std::{collections::HashMap, io, iter, path, str, sync::Arc};
+use std::{collections::HashMap, io, iter, path, sync::Arc};
 use tokio::{fs, task};
 use tracing::instrument;
 
@@ -318,9 +318,7 @@ fn find_ldml_file(ws: &Tag, sldr_dir: &path::Path, langtags: &LangTags) -> Optio
     // Lookup the tag set and generate a prefered sorted list.
     let tagset = langtags.orthographic_normal_form(ws)?;
     let tags: Vec<_> = tagset.iter().collect();
-
-    let mut path = sldr_dir.to_path_buf();
-    path.push(&tagset.lang()[0..1]);
+    let path = sldr_dir.join(&tagset.lang()[0..1]);
 
     tags.iter()
         .map(|&tag| {

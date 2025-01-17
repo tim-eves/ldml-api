@@ -38,7 +38,7 @@ impl Document {
         Some(ctxt)
     }
 
-    pub fn findnodes(&self, xpath: &str) -> Option<Vec<RoNode>> {
+    pub fn find_nodes(&self, xpath: &str) -> Option<Vec<RoNode>> {
         let root = self.inner.get_root_readonly()?;
         let ctxt = self.get_context()?;
         ctxt.node_evaluate_readonly(xpath, root)
@@ -46,7 +46,7 @@ impl Document {
             .map(|res| res.get_readonly_nodes_as_vec())
     }
 
-    pub fn _findvalue(&self, xpath: &str) -> Option<String> {
+    pub fn _find_value(&self, xpath: &str) -> Option<String> {
         self.get_context()
             .and_then(|mut ctxt| ctxt.findvalue(xpath, None).ok())
     }
@@ -54,7 +54,7 @@ impl Document {
     pub fn subset(&mut self, xpaths: &[&str]) -> Result<(), String> {
         let compound =
             "/ldml/*[self::".to_string() + &xpaths.join(" or self::") + " or self::identity]";
-        let nodes = self.findnodes(&compound).ok_or("XPath evalution failed")?;
+        let nodes = self.find_nodes(&compound).ok_or("XPath evalution failed")?;
         let ldml = self
             .inner
             .get_root_element()
@@ -109,7 +109,7 @@ mod test {
     fn find_revid() {
         let doc = Document::new("tests/en_US.xml").expect("LDML failed parse.");
         let revid = doc
-            ._findvalue("//sil:identity/@revid")
+            ._find_value("//sil:identity/@revid")
             .expect("revid not found");
 
         assert_eq!(revid, "b83dea0b8c92193966b10b85c823a22479d1c3ed");
@@ -120,7 +120,7 @@ mod test {
         let mut doc = Document::new("tests/en_US.xml").expect("LDML failed parse.");
         doc.set_uid(012345678).expect("uid update failed.");
         let uid = doc
-            ._findvalue("//sil:identity/@uid")
+            ._find_value("//sil:identity/@uid")
             .expect("uid attribute not found.");
         assert_eq!(uid, "12345678");
     }
@@ -129,7 +129,7 @@ mod test {
     fn find_sil_kdb() {
         let doc = Document::new("tests/en_US.xml").expect("LDML failed parse.");
         let silkbd = doc
-            ._findvalue("//sil:kbd[@id='basic_kbdusa']/sil:url")
+            ._find_value("//sil:kbd[@id='basic_kbdusa']/sil:url")
             .expect("Value not found");
 
         assert_eq!(
@@ -206,7 +206,7 @@ CLDR data files are interpreted according to the LDML specification (http://unic
     fn find_identity() {
         let doc = Document::new("tests/en_US.xml").expect("LDML failed parse.");
         let silid = doc
-            .findnodes("/ldml/*[self::identity[special/sil:identity] or self::metadata]")
+            .find_nodes("/ldml/*[self::identity[special/sil:identity] or self::metadata]")
             .expect("Node not found");
         let res = silid
             .iter()

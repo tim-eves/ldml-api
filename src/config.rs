@@ -131,7 +131,7 @@ impl Profiles {
 
 #[cfg(test)]
 mod test {
-    use super::{Arc, Config, LangTags, Profiles, ProfilesInner};
+    use super::{Config, LangTags, Profiles, ProfilesInner};
     use serde_json::json;
 
     #[test]
@@ -358,13 +358,14 @@ mod test {
         let mut expected = ProfilesInner::new();
         expected.insert(
             "production".into(),
-            Arc::new(Config {
+            Config {
                 sendfile_method: Some("X-Accel-Redirect".into()),
                 langtags: LangTags::from_reader(langtags_json)
                     .expect("LangTags production test case."),
                 langtags_dir: "tests/short/".into(),
                 sldr_dir: "/data/sldr/".into(),
-            }),
+            }
+            .into(),
         );
         expected.insert(
             "staging".into(),

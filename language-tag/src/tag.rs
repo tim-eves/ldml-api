@@ -542,9 +542,7 @@ impl Display for ParseExtensionError {
         match self {
             ParseExtensionError::InvalidNamespace => "non-ascii character for namespace",
             ParseExtensionError::MissingNamespace => "no namespace prefix found",
-            ParseExtensionError::NameToLong => {
-                "name value must be between 2 and 8 ascii characters"
-            }
+            ParseExtensionError::NameToLong => "name value must be 2-8 ascii characters long",
         }
         .fmt(f)
     }

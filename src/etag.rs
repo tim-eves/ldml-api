@@ -33,7 +33,6 @@ pub fn from_metadata(path: &Path) -> Option<ETag> {
     token.parse::<ETag>().ok()
 }
 
-#[inline]
 pub fn weaken(etag: ETag) -> ETag {
     let mut header = vec![];
     etag.encode(&mut header);
