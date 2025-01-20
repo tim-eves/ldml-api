@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{error::Error, fmt::Display, str::FromStr};
 
 use super::Tag;
 
@@ -11,10 +11,8 @@ use nom::{
     error::{context, ContextError, ParseError},
     multi::{many0, many_m_n, separated_list1},
     sequence::{delimited, pair, separated_pair, terminated, tuple},
-    IResult,
+    Finish, IResult,
 };
-
-pub use nom::{error::Error, Finish};
 
 fn dash<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, char, E> {
     char('-')(input)
@@ -203,16 +201,32 @@ where
     ))(input)
 }
 
+#[derive(Debug)]
+pub struct ParseTagError(nom::error::Error<String>);
+
+impl Display for ParseTagError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "failed to parse tag: {input}", input = self.0.input)
+    }
+}
+
+impl Error for ParseTagError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.0)
+    }
+}
+
 impl FromStr for Tag {
-    type Err = Error<String>;
+    type Err = ParseTagError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use nom::error::Error;
         match languagetag(s).finish() {
             Ok((_, tag)) => Ok(tag),
-            Err(Error { input, code }) => Err(Self::Err {
+            Err(Error { input, code }) => Err(ParseTagError(Error {
                 input: input.to_owned(),
                 code,
-            }),
+            })),
         }
     }
 }
@@ -224,39 +238,39 @@ mod tests {
         use crate::Tag;
 
         let gf_cases = [
-            ("art-lojban", Ok(Tag::with_lang("jbo"))),
-            ("cel-gaulish", Ok(Tag::with_lang("cel-gaulish"))),
+            ("art-lojban", Tag::with_lang("jbo")),
+            ("cel-gaulish", Tag::with_lang("cel-gaulish")),
             (
                 "en-GB-oed",
-                Ok(Tag::from_parts("en", None, "GB", ["oxendict"], [], None)),
+                Tag::from_parts("en", None, "GB", ["oxendict"], [], None),
             ),
-            ("i-ami", Ok(Tag::with_lang("ami"))),
-            ("i-bnn", Ok(Tag::with_lang("bnn"))),
-            ("i-default", Ok(Tag::with_lang("i-default"))),
-            ("i-enochian", Ok(Tag::with_lang("i-enochian"))),
-            ("i-hak", Ok(Tag::with_lang("hak"))),
-            ("i-klingon", Ok(Tag::with_lang("tlh"))),
-            ("i-lux", Ok(Tag::with_lang("lb"))),
-            ("i-mingo", Ok(Tag::with_lang("i-mingo"))),
-            ("i-navajo", Ok(Tag::with_lang("nv"))),
-            ("i-pwn", Ok(Tag::with_lang("pwn"))),
-            ("i-tao", Ok(Tag::with_lang("tao"))),
-            ("i-tay", Ok(Tag::with_lang("tay"))),
-            ("i-tsu", Ok(Tag::with_lang("tsu"))),
-            ("no-bok", Ok(Tag::with_lang("nb"))),
-            ("no-nyn", Ok(Tag::with_lang("nn"))),
-            ("sgn-BE-FR", Ok(Tag::with_lang("sfb"))),
-            ("sgn-BE-NL", Ok(Tag::with_lang("vgt"))),
-            ("sgn-CH-DE", Ok(Tag::with_lang("sgg"))),
-            ("zh-guoyu", Ok(Tag::with_lang("cmn"))),
-            ("zh-hakka", Ok(Tag::with_lang("hak"))),
-            ("zh-min", Ok(Tag::with_lang("zh-min"))),
-            ("zh-min-nan", Ok(Tag::with_lang("nan"))),
-            ("zh-xiang", Ok(Tag::with_lang("hsn"))),
+            ("i-ami", Tag::with_lang("ami")),
+            ("i-bnn", Tag::with_lang("bnn")),
+            ("i-default", Tag::with_lang("i-default")),
+            ("i-enochian", Tag::with_lang("i-enochian")),
+            ("i-hak", Tag::with_lang("hak")),
+            ("i-klingon", Tag::with_lang("tlh")),
+            ("i-lux", Tag::with_lang("lb")),
+            ("i-mingo", Tag::with_lang("i-mingo")),
+            ("i-navajo", Tag::with_lang("nv")),
+            ("i-pwn", Tag::with_lang("pwn")),
+            ("i-tao", Tag::with_lang("tao")),
+            ("i-tay", Tag::with_lang("tay")),
+            ("i-tsu", Tag::with_lang("tsu")),
+            ("no-bok", Tag::with_lang("nb")),
+            ("no-nyn", Tag::with_lang("nn")),
+            ("sgn-BE-FR", Tag::with_lang("sfb")),
+            ("sgn-BE-NL", Tag::with_lang("vgt")),
+            ("sgn-CH-DE", Tag::with_lang("sgg")),
+            ("zh-guoyu", Tag::with_lang("cmn")),
+            ("zh-hakka", Tag::with_lang("hak")),
+            ("zh-min", Tag::with_lang("zh-min")),
+            ("zh-min-nan", Tag::with_lang("nan")),
+            ("zh-xiang", Tag::with_lang("hsn")),
         ];
         for (test, result) in &gf_cases {
-            let test = test.parse();
-            assert_eq!(test, *result);
+            let test: Tag = test.parse().expect("failed to parse test case");
+            assert_eq!(&test, result);
         }
     }
 }

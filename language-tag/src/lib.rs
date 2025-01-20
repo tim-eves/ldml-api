@@ -1,7 +1,10 @@
 mod parser;
 mod tag;
 
-pub use self::tag::{ExtensionRef, Tag};
+pub use self::{
+    parser::ParseTagError,
+    tag::{ExtensionRef, Tag},
+};
 
 #[derive(Default, Debug)]
 pub struct Builder<'a> {

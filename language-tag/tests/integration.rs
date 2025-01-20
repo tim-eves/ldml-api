@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use language_tag::{ExtensionRef, Tag};
+use language_tag::{ExtensionRef, ParseTagError, Tag};
 
 #[test]
 fn builder() {
@@ -19,17 +19,10 @@ fn builder() {
 
 #[test]
 fn parser() {
-    use crate::Tag;
+    use crate::{ParseTagError, Tag};
 
-    use nom::error::{Error, ErrorKind};
     let gf_cases = [
-        (
-            "-",
-            Err(Error {
-                input: "-".to_string(),
-                code: ErrorKind::Tag,
-            }),
-        ),
+        ("-", Err("failed to parse tag: -".into())),
         ("de", Ok(Tag::with_lang("de"))),
         (
             "en-x-priv2",
@@ -81,7 +74,10 @@ fn parser() {
         ),
     ];
     for (test, result) in &gf_cases {
-        assert_eq!(test.parse(), *result);
+        assert_eq!(
+            test.parse().map_err(|e: ParseTagError| e.to_string()),
+            *result
+        );
     }
 }
 
@@ -102,7 +98,7 @@ fn from_str() {
             .err()
             .expect("Err value not found")
             .to_string(),
-        "error Tag at: en-Latn-USA"
+        "failed to parse tag: en-Latn-USA"
     );
 }
 

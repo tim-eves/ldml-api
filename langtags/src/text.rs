@@ -184,7 +184,7 @@ mod test {
             .err()
             .expect("io::Error from langtags test case parse.");
         assert_eq!(test.kind(), io::ErrorKind::InvalidData);
-        assert_eq!(test.to_string(), "error Tag at: #*aa ");
+        assert_eq!(test.to_string(), "failed to parse tag: #*aa ");
     }
 
     #[test]
