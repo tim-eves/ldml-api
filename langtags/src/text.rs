@@ -2,7 +2,6 @@ use crate::{langtags::LangTags as CoreLangTags, tagset::TagSet};
 use language_tag::Tag;
 use std::{
     borrow::Borrow,
-    collections::BinaryHeap as Heap,
     error::Error,
     io::{self, BufRead},
     ops::{Deref, DerefMut},
@@ -50,10 +49,10 @@ impl LangTags {
                     Ok(line) => Some(
                         line.split('=')
                             .map(parse)
-                            .collect::<Result<Heap<Tag>, _>>()
+                            .collect::<Result<Vec<_>, _>>()
                             .map_err(into_io_error)
-                            .map(|ts| {
-                                let mut ts = ts.into_sorted_vec();
+                            .map(|mut ts| {
+                                ts.sort();
                                 assert!(ts.len() >= 2);
                                 TagSet {
                                     full: ts.remove(ts.len() - 1),
