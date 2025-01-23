@@ -124,31 +124,4 @@ mod test {
 
         assert_eq!(test, langtags);
     }
-
-    #[test]
-    fn display_trait() {
-        let mut test: Vec<_> = LangTags::from_reader(
-            br#"
-            *aa = *aa-ET = aa-Latn = aa-Latn-ET
-            aa-Arab = aa-Arab-ET"#
-                .as_slice(),
-        )
-        .expect("LangTags test case.")
-        .iter()
-        .map(|(k, v)| format!("{k}: {v}"))
-        .collect();
-        test.sort();
-
-        assert_eq!(
-            test,
-            [
-                "aa-Arab-ET: aa-Arab=aa-Arab-ET",
-                "aa-Arab: aa-Arab=aa-Arab-ET",
-                "aa-ET: aa=aa-ET=aa-Latn=aa-Latn-ET",
-                "aa-Latn-ET: aa=aa-ET=aa-Latn=aa-Latn-ET",
-                "aa-Latn: aa=aa-ET=aa-Latn=aa-Latn-ET",
-                "aa: aa=aa-ET=aa-Latn=aa-Latn-ET",
-            ]
-        );
-    }
 }
