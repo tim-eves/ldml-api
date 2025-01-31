@@ -139,12 +139,9 @@ async fn stream_file_as(
     filename: &path::Path,
 ) -> Result<impl IntoResponse, Response> {
     let mime = mime_guess::from_path(filename).first_or_octet_stream();
-    let disposition = format!(
-        "attachment; filename=\"{name}\"",
-        name = filename.to_string_lossy()
-    )
-    .parse()
-    .expect("failed to parse Content-Disposition header value");
+    let disposition = format!("attachment; filename=\"{name}\"", name = filename.display())
+        .parse()
+        .expect("failed to parse Content-Disposition header value");
     let mut headers = HeaderMap::new();
     headers.typed_insert(ContentType::from(mime));
     headers.insert(CONTENT_DISPOSITION, disposition);
@@ -240,7 +237,7 @@ async fn fetch_writing_system_ldml(ws: &Tag, params: WSParams, cfg: &Config) -> 
 
     tracing::debug!(
         "find writing system in {path} with {params:?}",
-        path = cfg.sldr_path(flatten).to_string_lossy()
+        path = cfg.sldr_path(flatten).display()
     );
     let path = find_ldml_file(ws, &cfg.sldr_path(flatten), &cfg.langtags)
         .ok_or_else(|| (StatusCode::NOT_FOUND, format!("No LDML for {ws}")).into_response())?;
