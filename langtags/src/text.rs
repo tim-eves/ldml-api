@@ -2,7 +2,7 @@ use crate::{langtags::LangTags as CoreLangTags, tagset::TagSet};
 use language_tag::Tag;
 use std::{
     borrow::Borrow,
-    error::Error,
+    fmt::Display,
     io::{self, BufRead},
     ops::{Deref, DerefMut},
 };
@@ -30,40 +30,91 @@ impl Borrow<CoreLangTags> for LangTags {
     }
 }
 
-impl LangTags {
-    pub fn from_reader<R: BufRead>(reader: R) -> io::Result<Self> {
-        fn into_io_error<E>(error: E) -> io::Error
-        where
-            E: Into<Box<dyn Error + Send + Sync>>,
-        {
-            io::Error::new(io::ErrorKind::InvalidData, error)
-        }
+#[derive(Debug)]
+enum ErrorKind {
+    IO(io::Error),
+    Parse(language_tag::ParseTagError),
+    TagSetToSmall,
+}
 
+impl Display for ErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::IO(err) => write!(f, "{err}"),
+            Self::Parse(err) => write!(f, "{err}"),
+            Self::TagSetToSmall => f.write_str("a tagset needs at least 2 tags"),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Error {
+    line: usize,
+    kind: ErrorKind,
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Could not parse langtags.txt data, at line {}: {}",
+            self.line + 1,
+            self.kind
+        )
+    }
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self.kind {
+            ErrorKind::IO(ref err) => Some(err),
+            ErrorKind::Parse(ref err) => Some(err),
+            _ => None,
+        }
+    }
+}
+
+impl LangTags {
+    pub fn from_reader<R: BufRead>(reader: R) -> Result<Self, Error> {
         let parse = |s: &str| s.trim_start_matches([' ', '*', '\t']).parse::<Tag>();
 
         let mut langtags = CoreLangTags {
             tagsets: reader
                 .lines()
-                .filter_map(|read_line| match read_line {
+                .enumerate()
+                .filter_map(|(line_no, read_line)| match read_line {
                     Ok(line) if line.trim().is_empty() => None,
                     Ok(line) => Some(
                         line.split('=')
                             .map(parse)
                             .collect::<Result<Vec<_>, _>>()
-                            .map_err(into_io_error)
-                            .map(|mut ts| {
+                            .map_err(|err| Error {
+                                line: line_no,
+                                kind: ErrorKind::Parse(err),
+                            })
+                            .and_then(|mut ts| {
+                                if ts.len() < 2 {
+                                    return Err(Error {
+                                        line: line_no,
+                                        kind: ErrorKind::TagSetToSmall,
+                                    });
+                                }
+
                                 ts.sort();
                                 assert!(ts.len() >= 2);
-                                TagSet {
+                                Ok(TagSet {
                                     full: ts.remove(ts.len() - 1),
                                     sldr: line.contains('*'),
                                     tag: ts.remove(0),
                                     tags: ts,
                                     ..Default::default()
-                                }
+                                })
                             }),
                     ),
-                    Err(err) => Some(Err(err)),
+                    Err(err) => Some(Err(Error {
+                        line: line_no,
+                        kind: ErrorKind::IO(err),
+                    })),
                 })
                 .collect::<Result<Vec<_>, _>>()?,
             ..Default::default()
@@ -79,15 +130,17 @@ impl LangTags {
 mod test {
     use super::{LangTags, TagSet};
     use language_tag::Tag;
-    use std::{io, str::FromStr};
+    use std::str::FromStr;
 
     #[test]
     fn invalid_tagset() {
         let test = LangTags::from_reader(b"#*aa = *aa-ET = aa-Latn = aa-Latn-ET".as_slice())
             .err()
-            .expect("io::Error from langtags test case parse.");
-        assert_eq!(test.kind(), io::ErrorKind::InvalidData);
-        assert_eq!(test.to_string(), "failed to parse tag: #*aa ");
+            .expect("text::Error from langtags test case parse.");
+        assert_eq!(
+            test.to_string(),
+            "Could not parse langtags.txt data, at line 1: failed to parse tag: #*aa"
+        );
     }
 
     #[test]
