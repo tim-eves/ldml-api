@@ -206,7 +206,11 @@ pub struct ParseTagError(nom::error::Error<String>);
 
 impl Display for ParseTagError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "failed to parse tag: {input}", input = self.0.input)
+        write!(
+            f,
+            "failed to parse tag: {input}",
+            input = self.0.input.trim_end()
+        )
     }
 }
 
