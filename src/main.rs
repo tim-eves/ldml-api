@@ -38,11 +38,12 @@ async fn main() -> io::Result<()> {
     let args = Args::parse();
 
     // Load configuraion
-    let cfg = config::Profiles::from_reader(File::open(&args.config)?)
+    let cfg = File::open(&args.config)
+        .and_then(config::Profiles::from_reader)
         .unwrap_or_else(|err: io::Error| {
             tracing::error!(
                 "Error loading config: {file}: {message}",
-                file = args.config.to_string_lossy(),
+                file = args.config.display(),
                 message = err.to_string()
             );
             std::process::exit(err.raw_os_error().unwrap_or_default());
