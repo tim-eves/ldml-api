@@ -50,8 +50,8 @@ impl Profiles {
         self
     }
 
-    fn into_parse_error(msg: &str) -> io::Error {
-        io::Error::new(io::ErrorKind::InvalidData, format!("parse failed: {msg}"))
+    fn make_error<E: Into<Box<dyn std::error::Error + Send + Sync>>>(err: E) -> io::Error {
+        io::Error::new(io::ErrorKind::InvalidData, err)
     }
 
     pub fn get(&self, profile: &str) -> Option<&Arc<Config>> {
@@ -63,7 +63,7 @@ impl Profiles {
 
         let profiles = cfg
             .as_object()
-            .ok_or_else(|| Self::into_parse_error("profile map"))?;
+            .ok_or_else(|| Self::make_error("profiles object parse failed".to_string()))?;
         let mut configs = ProfilesInner::with_capacity(profiles.len());
         // Read defined profiles
         for (name, v) in profiles.iter() {
@@ -72,33 +72,25 @@ impl Profiles {
             let mut sldr_dir = Default::default();
 
             v.as_object()
-                .ok_or_else(|| Self::into_parse_error("config object"))
+                .ok_or_else(|| Self::make_error(format!("\"{name}\": profile parse failed")))
                 .and_then(|tbl| {
                     sendfile_method = tbl
                         .get("sendfile_method")
                         .and_then(Value::as_str)
                         .map(str::to_string);
-                    sldr_dir = tbl["sldr"]
-                        .as_str()
-                        .map(PathBuf::from)
-                        .ok_or_else(|| Self::into_parse_error("sldr path"))?;
-                    langtags_dir = tbl["langtags"]
-                        .as_str()
-                        .map(PathBuf::from)
-                        .ok_or_else(|| Self::into_parse_error("sldr path"))?;
+                    sldr_dir = tbl["sldr"].as_str().map(PathBuf::from).ok_or_else(|| {
+                        Self::make_error(format!("\"{name}\".sldr: path parse failed"))
+                    })?;
+                    langtags_dir =
+                        tbl["langtags"].as_str().map(PathBuf::from).ok_or_else(|| {
+                            Self::make_error(format!("\"{name}\".langtags: path parse failed"))
+                        })?;
                     Ok(())
                 })?;
 
             let langtags_path = langtags_dir.join("langtags.json");
-            let reader = BufReader::new(File::open(&langtags_path).map_err(|e| {
-                tracing::error!(
-                    "Error: {file}: {message}",
-                    file = langtags_path.to_string_lossy(),
-                    message = e.to_string()
-                );
-                Self::into_parse_error("langtags path")
-            })?);
-            let langtags = LangTags::from_reader(reader)?;
+            let reader = BufReader::new(File::open(&langtags_path)?);
+            let langtags = LangTags::from_reader(reader).map_err(Self::make_error)?;
 
             configs.insert(
                 name.to_owned(),
@@ -148,12 +140,7 @@ mod test {
         let res = Profiles::from_reader(
             json!(
                 {
-                    "staging": {
-                        "langtags": "/staging/data/",
-                        "sldr": "/staging/data/sldr/"
-                    },
                     "production": {
-                        "sendfile_method": "X-Accel-Redirect",
                         "langtags": "/data/",
                         "sldr": "/data/sldr/"
                     }
@@ -164,7 +151,7 @@ mod test {
         )
         .err()
         .expect("io:Error: Not found during profiles::from_reader.");
-        assert_eq!(res.kind(), std::io::ErrorKind::InvalidData);
+        assert_eq!(res.kind(), std::io::ErrorKind::NotFound);
     }
 
     #[test]

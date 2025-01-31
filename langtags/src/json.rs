@@ -3,7 +3,8 @@ use serde::Deserialize;
 use std::{
     borrow::Borrow,
     collections::HashSet as Set,
-    io::{self, BufRead},
+    fmt::Display,
+    io::BufRead,
     ops::{Deref, DerefMut},
 };
 
@@ -34,6 +35,53 @@ impl Borrow<CoreLangTags> for LangTags {
     }
 }
 
+#[derive(Debug)]
+enum ErrorKind {
+    JSON(serde_json::Error),
+    MissingHeader(String),
+}
+
+impl Display for ErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::JSON(err) => write!(f, "{err}"),
+            Self::MissingHeader(header) => write!(f, r#"required header "{header}" is missing"#),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Error(ErrorKind);
+
+impl From<serde_json::Error> for Error {
+    #[inline(always)]
+    fn from(value: serde_json::Error) -> Self {
+        Error(ErrorKind::JSON(value))
+    }
+}
+
+impl From<ErrorKind> for Error {
+    #[inline(always)]
+    fn from(value: ErrorKind) -> Self {
+        Error(value)
+    }
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Could not parse langtags.json data: {}", self.0)
+    }
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self.0 {
+            ErrorKind::JSON(ref err) => Some(err),
+            ErrorKind::MissingHeader(_) => None,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Eq, PartialEq)]
 #[serde(tag = "tag")]
 enum Header {
@@ -42,7 +90,12 @@ enum Header {
     #[serde(rename = "_phonvar")]
     PhonVar { variants: Set<StringRepr> },
     #[serde(rename = "_version")]
-    Version { api: StringRepr, date: StringRepr },
+    Version {
+        #[serde(default)]
+        api: StringRepr,
+        #[serde(default)]
+        date: StringRepr,
+    },
     #[serde(rename = "_conformance")]
     Conformance {
         scripts: Vec<StringRepr>,
@@ -51,7 +104,7 @@ enum Header {
 }
 
 impl LangTags {
-    pub fn from_reader<R: BufRead>(reader: R) -> io::Result<Self> {
+    pub fn from_reader<R: BufRead>(reader: R) -> Result<Self, Error> {
         use serde_json::Value;
 
         let mut values: Vec<Value> = serde_json::from_reader(reader)?;
@@ -83,6 +136,13 @@ impl LangTags {
             }
         }
 
+        if langtags.version.is_empty() {
+            Err(ErrorKind::MissingHeader("_version.api".into()))?;
+        }
+        if langtags.date.is_empty() {
+            Err(ErrorKind::MissingHeader("_version.date".into()))?;
+        }
+
         // Remove the values that were headers, leaving only the valid TagSets.
         values.drain(..tagset_start);
         langtags.tagsets = serde_json::from_value(Value::Array(values))?;
@@ -104,6 +164,8 @@ impl LangTags {
 
 #[cfg(test)]
 mod test {
+    use crate::json::LangTags;
+
     use super::Header;
     use serde_json::{json, Value};
 
@@ -190,6 +252,40 @@ mod test {
                     date: "2021-06-29".into()
                 }
             ]
+        );
+    }
+
+    #[test]
+    fn missing_headers() {
+        let src = json!([
+            {
+                "api": "1.2.1",
+                // "date": "2021-06-29",
+                "tag": "_version"
+            }
+        ])
+        .to_string();
+        let langtags = LangTags::from_reader(src.as_bytes());
+        assert_eq!(
+            langtags.unwrap_err().to_string(),
+            "Could not parse langtags.json data: required header \"_version.date\" is missing"
+        );
+    }
+
+    #[test]
+    fn bad_json() {
+        let src = br#"[
+            {
+                "api": "1.2.1"
+                "date": "2021-06-29",
+                "tag": "_version"
+            }
+        ]"#;
+
+        let langtags = LangTags::from_reader(src.as_slice());
+        assert_eq!(
+            langtags.unwrap_err().to_string(),
+            "Could not parse langtags.json data: expected `,` or `}` at line 4 column 17"
         );
     }
 }
