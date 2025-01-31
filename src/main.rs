@@ -6,17 +6,17 @@ use tokio::net::TcpListener;
 use tower_http::{compression::CompressionLayer, trace::TraceLayer};
 
 #[derive(Debug, Parser)]
-#[clap(author, version, about)]
+#[command(author, version, about)]
 struct Args {
-    #[clap(long, default_value = "/etc/ldml-api.json")]
+    #[arg(long, default_value = "/etc/ldml-api.json")]
     /// Path to config file
     config: path::PathBuf,
 
-    #[clap(long, default_value = "production")]
+    #[arg(long, default_value = "production")]
     /// Default profile to use when staging argument not set in a request
     profile: String,
 
-    #[clap(short, long, default_value = "0.0.0.0:3000")]
+    #[arg(short, long, default_value = "0.0.0.0:3000")]
     listen: SocketAddr,
 }
 
