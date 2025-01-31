@@ -209,40 +209,37 @@ mod test {
 
     #[test]
     fn display_trait() {
-        let test: Vec<TagSet> = serde_json::from_str(
-            &json!([
-                {
-                    "full": "aa-Arab-ET",
-                    "iana": [ "Afar" ],
-                    "iso639_3": "aar",
-                    "name": "Afar",
-                    "nophonvars": true,
-                    "region": "ET",
-                    "regionname": "Ethiopia",
-                    "regions": [ "DJ", "ER" ],
-                    "script": "Arab",
-                    "sldr": false,
-                    "tag": "aa-Arab",
-                    "windows": "aa-Arab-ET"
-                },
-                {
-                    "full": "aa-Latn-ET",
-                    "iana": [ "Afar" ],
-                    "iso639_3": "aar",
-                    "localname": "Qafar",
-                    "localnames": [ "Qafar af" ],
-                    "name": "Afar",
-                    "region": "ET",
-                    "regionname": "Ethiopia",
-                    "script": "Latn",
-                    "sldr": true,
-                    "tag": "aa",
-                    "tags": [ "aa-ET", "aa-Latn" ],
-                    "windows": "aa-Latn-ET"
-                }
-            ])
-            .to_string(),
-        )
+        let test: Vec<TagSet> = serde_json::from_value(json!([
+            {
+                "full": "aa-Arab-ET",
+                "iana": [ "Afar" ],
+                "iso639_3": "aar",
+                "name": "Afar",
+                "nophonvars": true,
+                "region": "ET",
+                "regionname": "Ethiopia",
+                "regions": [ "DJ", "ER" ],
+                "script": "Arab",
+                "sldr": false,
+                "tag": "aa-Arab",
+                "windows": "aa-Arab-ET"
+            },
+            {
+                "full": "aa-Latn-ET",
+                "iana": [ "Afar" ],
+                "iso639_3": "aar",
+                "localname": "Qafar",
+                "localnames": [ "Qafar af" ],
+                "name": "Afar",
+                "region": "ET",
+                "regionname": "Ethiopia",
+                "script": "Latn",
+                "sldr": true,
+                "tag": "aa",
+                "tags": [ "aa-ET", "aa-Latn" ],
+                "windows": "aa-Latn-ET"
+            }
+        ]))
         .expect("LangTags test case.");
         let test: Vec<_> = test
             .iter()
