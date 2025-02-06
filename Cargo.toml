@@ -31,7 +31,7 @@ langtags = { version = "0", path = "./langtags", features = ["compact"] }
 language-tag = { workspace = true }
 libxml = { version = "0.3"}
 mime_guess = "2.0"
-rand = "0.8"
+rand = "0.9"
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_urlencoded = "0.7"

@@ -1,4 +1,4 @@
-use rand::prelude::*;
+use rand::random;
 use serde_with::DeserializeFromStr;
 use std::{num::NonZeroU32, ops::Deref, str::FromStr};
 
