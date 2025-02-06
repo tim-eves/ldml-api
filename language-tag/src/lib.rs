@@ -1,8 +1,11 @@
-mod parser;
-mod tag;
+pub use self::parser::languagetag;
+
+mod from_str;
+pub mod parser;
+pub mod tag;
 
 pub use crate::{
-    parser::ParseTagError,
+    from_str::ParseTagError,
     tag::{ExtensionRef, Tag},
 };
 

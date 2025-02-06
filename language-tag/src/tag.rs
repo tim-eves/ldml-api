@@ -247,6 +247,7 @@ impl Tag {
         if subtag.len() <= 4 || subtag.as_bytes()[1] != b'-' {
             panic!("subtag \"{subtag}\" is not a valid extension");
         }
+        // todo!("Remove hard panic on potential user supplied input.");
     }
 
     #[track_caller]
