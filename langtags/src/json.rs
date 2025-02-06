@@ -37,14 +37,14 @@ impl Borrow<CoreLangTags> for LangTags {
 
 #[derive(Debug)]
 enum ErrorKind {
-    JSON(serde_json::Error),
+    Json(serde_json::Error),
     MissingHeader(String),
 }
 
 impl Display for ErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::JSON(err) => write!(f, "{err}"),
+            Self::Json(err) => write!(f, "{err}"),
             Self::MissingHeader(header) => write!(f, r#"required header "{header}" is missing"#),
         }
     }
@@ -56,7 +56,7 @@ pub struct Error(ErrorKind);
 impl From<serde_json::Error> for Error {
     #[inline(always)]
     fn from(value: serde_json::Error) -> Self {
-        Error(ErrorKind::JSON(value))
+        Error(ErrorKind::Json(value))
     }
 }
 
@@ -76,7 +76,7 @@ impl Display for Error {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self.0 {
-            ErrorKind::JSON(ref err) => Some(err),
+            ErrorKind::Json(ref err) => Some(err),
             ErrorKind::MissingHeader(_) => None,
         }
     }

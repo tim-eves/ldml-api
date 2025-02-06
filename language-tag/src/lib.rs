@@ -1,7 +1,7 @@
 mod parser;
 mod tag;
 
-pub use self::{
+pub use crate::{
     parser::ParseTagError,
     tag::{ExtensionRef, Tag},
 };

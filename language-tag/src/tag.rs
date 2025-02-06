@@ -567,11 +567,11 @@ impl<'c> TryFrom<&'c str> for ExtensionRef<'c> {
         let ns = &s.as_bytes()[..2];
         match ns {
             [n, b'-'] if n.is_ascii() => {
-                if s.len() - 2 > 8 || s.len() - 2 < 2 {
+                if s.len() > 10 || s.len() < 4 {
                     Err(ParseExtensionError::NameToLong)
                 } else {
                     Ok(ExtensionRef {
-                        namespace: (*n).into(),
+                        namespace: *n as char,
                         name: &s[2..],
                     })
                 }

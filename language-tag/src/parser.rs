@@ -1,8 +1,5 @@
 use std::{error::Error, fmt::Display, str::FromStr};
 
-use super::Tag;
-
-extern crate nom;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while_m_n},
@@ -13,6 +10,8 @@ use nom::{
     sequence::{delimited, pair, separated_pair, terminated, tuple},
     Finish, IResult,
 };
+
+use crate::Tag;
 
 fn dash<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, char, E> {
     char('-')(input)
@@ -38,7 +37,7 @@ where
     E: ParseError<&'a str>,
     F: FnMut(&'a str) -> IResult<&'a str, O, E>,
 {
-    let eot = not(peek(verify(anychar, |c| c.is_ascii_alphanumeric())));
+    let eot = not(peek(satisfy(|c| c.is_ascii_alphanumeric())));
     delimited(dash, parser, eot)
 }
 
@@ -103,9 +102,7 @@ where
     let region = subtag(alt((letters(2), digits(3))));
     let variant = subtag(alt((ident, alphanums(5, 8))));
     let extension = subtag(extension_form(singleton, 2));
-    let terminator = not(peek(verify(anychar, |c| {
-        *c == '-' || c.is_ascii_alphanumeric()
-    })));
+    let terminator = not(peek(satisfy(|c| c == '-' || c.is_ascii_alphanumeric())));
     let (rest, mut tags) = terminated(
         tuple((
             context("language code", language),
