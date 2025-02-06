@@ -2,41 +2,34 @@ use std::{error::Error, fmt::Display, str::FromStr};
 
 use nom::{
     branch::alt,
-    bytes::complete::{tag, take_while_m_n},
-    character::complete::{anychar, char, none_of},
+    bytes::{tag, take_while_m_n},
+    character::{char, none_of, satisfy},
     combinator::{not, opt, peek, recognize, value, verify},
     error::{context, ContextError, ParseError},
-    multi::{many0, many_m_n, separated_list1},
-    sequence::{delimited, pair, separated_pair, terminated, tuple},
-    Finish, IResult,
+    multi::{many0, many1_count, many_m_n},
+    sequence::{delimited, pair, preceded, terminated},
+    IResult, Parser,
 };
 
 use crate::Tag;
 
 fn dash<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, char, E> {
-    char('-')(input)
+    char('-').parse_complete(input)
 }
 
-fn extension_form<'a, O, E, F>(
-    prefix: F,
+fn extension_form<'a, E: ParseError<&'a str>>(
+    prefix: impl Parser<&'a str, Output = char, Error = E>,
     min: usize,
-) -> impl FnMut(&'a str) -> IResult<&'a str, &'a str, E>
-where
-    E: ParseError<&'a str>,
-    F: FnMut(&'a str) -> IResult<&'a str, O, E>,
-{
-    recognize(separated_pair(
-        prefix,
-        dash,
-        separated_list1(dash, alphanums(min, 8)),
+) -> impl Parser<&'a str, Output = &'a str, Error = E> {
+    recognize(preceded(
+        prefix, 
+        many1_count((dash, alphanums(min, 8)))
     ))
 }
 
-fn subtag<'a, O, E, F>(parser: F) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
-where
-    E: ParseError<&'a str>,
-    F: FnMut(&'a str) -> IResult<&'a str, O, E>,
-{
+fn subtag<'a, O, E: ParseError<&'a str>>(
+    parser: impl Parser<&'a str, Output = O, Error = E>,
+) -> impl Parser<&'a str, Output = O, Error = E> {
     let eot = not(peek(satisfy(|c| c.is_ascii_alphanumeric())));
     delimited(dash, parser, eot)
 }
@@ -44,12 +37,12 @@ where
 fn alphanums<'a, E: ParseError<&'a str>>(
     m: usize,
     n: usize,
-) -> impl Fn(&'a str) -> IResult<&'a str, &'a str, E> {
+) -> impl Parser<&'a str, Output = &'a str, Error = E> {
     take_while_m_n(m, n, |c: char| c.is_ascii_alphanumeric())
 }
 
 fn private<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
-    extension_form(char('x'), 1)(input)
+    extension_form(char('x'), 1).parse_complete(input)
 }
 
 fn fixed_parse<'a, E: ParseError<&'a str>>(
@@ -57,7 +50,7 @@ fn fixed_parse<'a, E: ParseError<&'a str>>(
     lang: impl Into<Option<&'static str>>,
     region: impl Into<Option<&'static str>>,
     variant: impl Into<Option<&'static str>>,
-) -> impl FnMut(&'a str) -> IResult<&'a str, Tag, E> {
+) -> impl Parser<&'a str, Output = Tag, Error = E> {
     value(
         Tag::from_parts(
             lang.into().unwrap_or(name),
@@ -104,16 +97,16 @@ where
     let extension = subtag(extension_form(singleton, 2));
     let terminator = not(peek(satisfy(|c| c == '-' || c.is_ascii_alphanumeric())));
     let (rest, mut tags) = terminated(
-        tuple((
+        (
             context("language code", language),
             context("script code", opt(script)),
             context("region code", opt(region)),
             context("variant subtags", many0(variant)),
             context("extension subtags", many0(extension)),
             context("private subtag", opt(subtag(private))),
-        )),
+        ),
         terminator,
-    )(input)?;
+    ).parse_complete(input)?;
     tags.3.sort_unstable();
     tags.4.sort_unstable();
     Ok((
@@ -134,7 +127,7 @@ fn privateuse<'a, E>(input: &'a str) -> IResult<&'a str, Tag, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str>,
 {
-    let (input, pu) = context("private use tag", private)(input)?;
+    let (input, pu) = context("private use tag", private).parse_complete(input)?;
     Ok((input, Tag::privateuse(pu)))
 }
 
@@ -155,7 +148,7 @@ where
             fixed_parse!("no-bok", "nb"),
             fixed_parse!("no-nyn", "nn"),
         )),
-    )(input)
+    ).parse_complete(input)
 }
 
 fn grandfathered_irregular<'a, E>(input: &'a str) -> IResult<&'a str, Tag, E>
@@ -183,7 +176,7 @@ where
             fixed_parse!("i-tay", "tay"),
             fixed_parse!("i-tsu", "tsu"),
         )),
-    )(input)
+    ).parse_complete(input)
 }
 
 pub fn languagetag<'a, E>(input: &'a str) -> IResult<&'a str, Tag, E>
@@ -195,7 +188,7 @@ where
         langtag,
         privateuse,
         grandfathered_irregular,
-    ))(input)
+    )).parse_complete(input)
 }
 
 #[derive(Debug)]

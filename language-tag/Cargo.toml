@@ -18,6 +18,6 @@ compact = ["dep:compact_str"]
 serde_json = { workspace = true }
 
 [dependencies]
-nom = "7"
+nom = "8"
 serde_with = { version = "3.11", optional = true }
 compact_str = { version = "0.8", optional = true }
