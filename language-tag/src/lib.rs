@@ -94,12 +94,8 @@ impl<'a> Builder<'a> {
         tag
     }
 
-    #[inline]
+    #[inline(always)]
     fn to_option(s: &str) -> Option<&str> {
-        if s.is_empty() {
-            None
-        } else {
-            Some(s)
-        }
+        (!s.is_empty()).then_some(s)
     }
 }

@@ -101,7 +101,6 @@ impl LangTags {
                                 }
 
                                 ts.sort();
-                                assert!(ts.len() >= 2);
                                 Ok(TagSet {
                                     full: ts.remove(ts.len() - 1),
                                     sldr: line.contains('*'),

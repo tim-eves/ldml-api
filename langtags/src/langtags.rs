@@ -24,6 +24,7 @@ impl LangTags {
     }
 
     pub(crate) fn shrink_to_fit(&mut self) {
+        self.full.shrink_to_fit();
         self.scripts.shrink_to_fit();
         self.regions.shrink_to_fit();
         self.variants.shrink_to_fit();
@@ -44,11 +45,9 @@ impl LangTags {
     }
 
     fn valid_region(ts: &TagSet, region: Option<&str>) -> bool {
-        if let Some(region) = region {
-            ts.region() == Some(region) || ts.regions.contains(&region.into())
-        } else {
-            true
-        }
+        region.is_none_or(|region| {
+            ts.region().unwrap() == region || ts.regions.contains(&region.into())
+        })
     }
 
     fn valid_variants(&self, ts: &TagSet, tag: &Tag) -> bool {
