@@ -123,6 +123,8 @@ impl Profiles {
 
 #[cfg(test)]
 mod test {
+    use std::io::Cursor;
+
     use super::{Config, LangTags, Profiles, ProfilesInner};
     use serde_json::json;
 
@@ -347,7 +349,7 @@ mod test {
             "production".into(),
             Config {
                 sendfile_method: Some("X-Accel-Redirect".into()),
-                langtags: LangTags::from_reader(langtags_json)
+                langtags: LangTags::from_reader(Cursor::new(langtags_json))
                     .expect("LangTags production test case."),
                 langtags_dir: "tests/short/".into(),
                 sldr_dir: "/data/sldr/".into(),
@@ -358,7 +360,7 @@ mod test {
             "staging".into(),
             Config {
                 sendfile_method: None,
-                langtags: LangTags::from_reader(langtags_json)
+                langtags: LangTags::from_reader(Cursor::new(langtags_json))
                     .expect("LangTags staging test case."),
                 langtags_dir: "tests/short/".into(),
                 sldr_dir: "/staging/data/sldr/".into(),
