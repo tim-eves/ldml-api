@@ -61,7 +61,7 @@ impl Error {
         let mut prefix = String::with_capacity(prefix_len);
         reader.take(prefix_len as u64).read_to_string(&mut prefix).expect("could nod read headers");
         let line = prefix.lines().count();
-        let column = prefix_len - prefix.rfind('\n').unwrap_or_default();
+        let column = prefix_len - prefix.rfind('\n').unwrap_or_default() - 1;
         return Self(ErrorKind::MissingHeader { line, column, header: header.into() }.into());
     }
 }
@@ -275,14 +275,35 @@ mod test {
         let src = serde_json::to_string_pretty(&json!([
             {
                 "api": "1.2.1",
-                // "date": "2021-06-29",
                 "tag": "_version"
             }
         ])).expect("could not pretty print JSON Value");
         let langtags = LangTags::from_reader(Cursor::new(src.as_bytes()));
         assert_eq!(
             langtags.unwrap_err().to_string(),
-            "Could not parse langtags.json data: expected header object \"_version/date\" at line 6, column 2"
+            "Could not parse langtags.json data: expected header object \"_version/date\" at line 6, column 1",
+            "{src}"
+        );
+
+        let src = serde_json::to_string_pretty(&json!([
+            {
+                "date": "2021-06-29",
+                "tag": "_version"
+            }
+        ])).expect("could not pretty print JSON Value");
+        let langtags = LangTags::from_reader(Cursor::new(src.as_bytes()));
+        assert_eq!(
+            langtags.unwrap_err().to_string(),
+            "Could not parse langtags.json data: expected header object \"_version/api\" at line 6, column 1",
+            "{src}"
+        );
+
+        let src = serde_json::to_string_pretty(&json!([])).expect("could not pretty print JSON Value");
+        let langtags = LangTags::from_reader(Cursor::new(src.as_bytes()));
+        assert_eq!(
+            langtags.unwrap_err().to_string(),
+            "Could not parse langtags.json data: expected header object \"_version\" at line 1, column 1",
+            "{src}"
         );
     }
 
