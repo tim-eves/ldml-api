@@ -1,0 +1,10 @@
+resources:
+- ../prod
+configMapGenerator: []
+patches:
+- target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: ldml-api
+  path: patch_image_pull.yaml

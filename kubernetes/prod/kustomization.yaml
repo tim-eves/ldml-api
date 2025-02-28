@@ -1,0 +1,12 @@
+namespace: wstech
+labels:
+- pairs:
+    app: ldml-api
+  includeSelectors: true
+resources:
+- deployment.yaml
+- service.yaml
+- ingress.yaml
+- storage.yaml
+generatorOptions:
+  disableNameSuffixHash: true
