@@ -86,7 +86,7 @@ spec:
           https://github.com/silnrsi/langtags/releases/download/staging/langtags.json
           --output staging/langtags.json;
           curl --silent --location --etag-save production/etag --etag-compare production/etag
-          https://github.com/silnrsi/langtags/releases/download/staging/langtags.json
+          https://github.com/silnrsi/langtags/releases/latest/download/langtags.json
           --output production/langtags.json;
         resources:
           limits:
@@ -110,7 +110,7 @@ spec:
           | unzip -o - || true;
           cd ../production;
           curl --silent --location --etag-save etag --etag-compare etag
-          https://github.com/silnrsi/sldr/releases/download/staging/sldr.zip
+          https://github.com/silnrsi/sldr/releases/latest/download/sldr.zip
           | unzip -o - || true;
         resources:
           limits:
