@@ -13,9 +13,9 @@ fn load_mock_langtags() -> LangTags {
             .join("tests")
             .join("langtags.json"),
     )
-    .expect("open langtags.json");
+    .expect("should open test langtags.json");
 
-    LangTags::from_reader(BufReader::new(file)).expect("read langtags.json")
+    LangTags::from_reader(BufReader::new(file)).expect("should parse test langtags.json")
 }
 
 // Initialise a shared copy of the LTDB on demand, we use LazyLock to
@@ -137,11 +137,19 @@ fn normal_forms() {
             test_normal_form!(locale_normal_form, $key, $expected)
         };
         ($form:ident, $key:literal, $expected:literal) => {
-            let ts = LTDB.$form(&Tag::from_str($key).expect("Tag value"));
+            let ts = LTDB.$form(&Tag::from_str($key).expect(concat!(
+                "should parse ",
+                $key,
+                " into Tag value"
+            )));
             assert_ne!(ts, None, "could not lookup: {}", $key);
             assert_eq!(
                 ts.unwrap().full,
-                Tag::from_str($expected).expect("TagSet"),
+                Tag::from_str($expected).expect(concat!(
+                    "should parse ",
+                    $expected,
+                    " into Tag value"
+                )),
                 ""
             );
         };
@@ -168,7 +176,11 @@ fn sanity_check_script() {
             .chain(ts.tags.iter())
             .flat_map(|t| t.script())
             .collect();
-        computed_scripts.remove(ts.script().as_ref().expect("script missing."));
+        computed_scripts.remove(
+            ts.script()
+                .as_ref()
+                .expect("Tag should have a script subtag"),
+        );
         assert_eq!(
             computed_scripts.len(),
             0,
@@ -184,7 +196,7 @@ fn sanity_check_regions() {
         // Sanity check regions
         assert!(!ts
             .regions
-            .contains(&ts.region().expect("region missing.").into()));
+            .contains(&ts.region().expect("Tag should have a region subtag").into()));
         let regions: Set<&str> = ts
             .regions
             .iter()

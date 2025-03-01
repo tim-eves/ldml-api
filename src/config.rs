@@ -35,7 +35,7 @@ impl Index<&str> for Profiles {
     type Output = Arc<Config>;
 
     fn index(&self, index: &str) -> &Self::Output {
-        self.get(index).expect("no config found for profile")
+        self.get(index).expect("should get config for profile")
     }
 }
 
@@ -132,7 +132,7 @@ mod test {
     fn unreadable_config() {
         let res = Profiles::from_reader(&br"hang on this isn't JSON!"[..])
             .err()
-            .expect("io::Error: Invlalid data.");
+            .expect("should not parse invalid JSON");
         assert_eq!(res.kind(), std::io::ErrorKind::InvalidData);
         assert_eq!(res.to_string(), "expected value at line 1 column 1");
     }
@@ -152,7 +152,7 @@ mod test {
             .as_bytes(),
         )
         .err()
-        .expect("io:Error: Not found during profiles::from_reader.");
+        .expect("should not parse mock config.json with invalid langtags path");
         assert_eq!(res.kind(), std::io::ErrorKind::NotFound);
     }
 
@@ -175,7 +175,7 @@ mod test {
             .to_string()
             .as_bytes(),
         )
-        .expect("Profiles value.");
+        .expect("should parse mock config.json");
         let langtags_json = json!([
             {
                 "regions": [ "AA", "AC", "AN", "AQ", "BU", "BV", "CP", "CS", "DD", "EU", "EZ", "FX", "GS", "HM", "NT", "QM", "QN", "QO", "QP", "QQ", "QR", "QS", "QT", "QU", "QV", "QW", "QX", "QY", "QZ", "SU", "TA", "TF", "TP", "UN", "XA", "XB", "XC", "XD", "XE", "XF", "XG", "XH", "XI", "XJ", "XL", "XM", "XN", "XO", "XP", "XQ", "XR", "XS", "XT", "XU", "XV", "XW", "XY", "XZ", "YD", "YU", "ZR", "ZZ" ],
@@ -350,7 +350,7 @@ mod test {
             Config {
                 sendfile_method: Some("X-Accel-Redirect".into()),
                 langtags: LangTags::from_reader(Cursor::new(langtags_json))
-                    .expect("LangTags production test case."),
+                    .expect("should parse test langtags.json"),
                 langtags_dir: "tests/short/".into(),
                 sldr_dir: "/data/sldr/".into(),
             }
@@ -361,7 +361,7 @@ mod test {
             Config {
                 sendfile_method: None,
                 langtags: LangTags::from_reader(Cursor::new(langtags_json))
-                    .expect("LangTags staging test case."),
+                    .expect("should parse test langtags.json"),
                 langtags_dir: "tests/short/".into(),
                 sldr_dir: "/staging/data/sldr/".into(),
             }

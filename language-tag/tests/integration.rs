@@ -85,7 +85,7 @@ fn parser() {
 fn from_str() {
     use std::str::FromStr;
     assert_eq!(
-        Tag::from_str("en-Latn-US").expect("Ok value not found"),
+        Tag::from_str("en-Latn-US").expect("should parse langtag"),
         Tag::builder()
             .lang("en")
             .region("US")
@@ -96,7 +96,7 @@ fn from_str() {
     assert_eq!(
         Tag::from_str("en-Latn-USA")
             .err()
-            .expect("Err value not found")
+            .expect("should not parse bad langtag")
             .to_string(),
         "failed to parse tag: en-Latn-USA"
     );
@@ -140,9 +140,15 @@ fn getters() {
     let tag =
         Tag::from_str("en-Latn-US-1abc-2def-3ghi-a-abcdef-b-ghijklmn-c-tester-x-priv").unwrap();
     assert_eq!(tag.lang(), "en");
-    assert_eq!(tag.script().expect("script"), "Latn");
-    assert_eq!(tag.region().expect("region"), "US");
-    assert_eq!(tag.private().expect("private"), "x-priv");
+    assert_eq!(
+        tag.script().expect("Tag should have a script subtag"),
+        "Latn"
+    );
+    assert_eq!(tag.region().expect("Tag should have a region subtag"), "US");
+    assert_eq!(
+        tag.private().expect("Tag should have a private extension"),
+        "x-priv"
+    );
     assert_eq!(tag.variants().collect::<Vec<_>>(), ["1abc", "2def", "3ghi"]);
     assert_eq!(
         tag.extensions().collect::<Vec<_>>(),
@@ -221,7 +227,9 @@ fn setters() {
     );
 
     assert_eq!(
-        tag.pop_variant().as_deref().expect("Popped variant"),
+        tag.pop_variant()
+            .as_deref()
+            .expect("should have popped a variant"),
         "3ghi"
     );
     assert_eq!(
@@ -284,7 +292,7 @@ mod serde {
         let tag = Tag::from_str("en-Latn-US-1abc-a-abcdef-x-priv").unwrap();
         assert_eq!(
             "\"en-Latn-US-1abc-a-abcdef-x-priv\"",
-            serde_json::to_string(&tag).expect("could not serialize Tag")
+            serde_json::to_string(&tag).expect("should serialize Tag")
         )
     }
 
@@ -294,7 +302,7 @@ mod serde {
         assert_eq!(
             tag,
             serde_json::from_str("\"en-Latn-US-1abc-a-abcdef-x-priv\"")
-                .expect("could not deserialize Tag")
+                .expect("should deserialize Tag")
         )
     }
 }

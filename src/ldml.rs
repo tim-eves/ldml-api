@@ -107,30 +107,30 @@ mod test {
 
     #[test]
     fn find_revid() {
-        let doc = Document::new("tests/en_US.xml").expect("LDML failed parse.");
+        let doc = Document::new("tests/en_US.xml").expect("should parse test LDML");
         let revid = doc
             ._find_value("//sil:identity/@revid")
-            .expect("revid not found");
+            .expect("should find revid");
 
         assert_eq!(revid, "b83dea0b8c92193966b10b85c823a22479d1c3ed");
     }
 
     #[test]
     fn update_uid() {
-        let mut doc = Document::new("tests/en_US.xml").expect("LDML failed parse.");
-        doc.set_uid(012345678).expect("uid update failed.");
+        let mut doc = Document::new("tests/en_US.xml").expect("should parse test LDML");
+        doc.set_uid(012345678).expect("should update uid");
         let uid = doc
             ._find_value("//sil:identity/@uid")
-            .expect("uid attribute not found.");
+            .expect("should find uid attribute");
         assert_eq!(uid, "12345678");
     }
 
     #[test]
     fn find_sil_kdb() {
-        let doc = Document::new("tests/en_US.xml").expect("LDML failed parse.");
+        let doc = Document::new("tests/en_US.xml").expect("should parse test LDML");
         let silkbd = doc
             ._find_value("//sil:kbd[@id='basic_kbdusa']/sil:url")
-            .expect("Value not found");
+            .expect("should find `basic_kbdusa` url");
 
         assert_eq!(
             silkbd,
@@ -140,9 +140,9 @@ mod test {
 
     #[test]
     fn subsetting() {
-        let mut doc = Document::new("tests/en_US.xml").expect("LDML failed parse.");
+        let mut doc = Document::new("tests/en_US.xml").expect("should parse test LDML");
         doc.subset(&["metadata", "layout"])
-            .expect("Subsetting failed");
+            .expect("should subset test LDML Document");
 
         assert_eq!(
             doc.to_string(),
@@ -204,10 +204,10 @@ CLDR data files are interpreted according to the LDML specification (http://unic
 
     #[test]
     fn find_identity() {
-        let doc = Document::new("tests/en_US.xml").expect("LDML failed parse.");
+        let doc = Document::new("tests/en_US.xml").expect("should parse test LDML");
         let silid = doc
             .find_nodes("/ldml/*[self::identity[special/sil:identity] or self::metadata]")
-            .expect("Node not found");
+            .expect("should find identity and metadata nodes");
         let res = silid
             .iter()
             .map(|n| doc.inner.ronode_to_string(&n))

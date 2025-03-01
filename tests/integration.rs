@@ -21,7 +21,7 @@ fn parse_config(langtags: impl AsRef<Path>, sldr: impl AsRef<Path>) -> Profiles 
             .to_string()
             .as_bytes(),
     )
-    .expect("profiles")
+    .expect("should parse generated configuration")
     .set_default("test")
 }
 
@@ -29,7 +29,7 @@ static PROFILES: LazyLock<Profiles> = LazyLock::new(|| parse_config("tests/short
 
 #[inline]
 fn get_app() -> Router {
-    app(PROFILES.clone()).expect("Router")
+    app(PROFILES.clone()).expect("ldml-api::app should return Router")
 }
 
 #[tokio::test]
@@ -41,7 +41,7 @@ async fn index_page() {
             Request::builder()
                 .uri("/index.html")
                 .body(Body::empty())
-                .expect("Request"),
+                .expect("should request index page"),
         )
         .await
         .unwrap();
@@ -51,7 +51,7 @@ async fn index_page() {
             Request::builder()
                 .uri("/")
                 .body(Body::empty())
-                .expect("Request"),
+                .expect("should request default page"),
         )
         .await
         .unwrap();
@@ -61,7 +61,7 @@ async fn index_page() {
             Request::builder()
                 .uri("/index.html?query=langtags&ext=json")
                 .body(Body::empty())
-                .expect("Request"),
+                .expect("should request langtags.json via query"),
         )
         .await
         .unwrap();
@@ -71,7 +71,7 @@ async fn index_page() {
             Request::builder()
                 .uri("/index.html?query=langtags&ext=json&staging=1")
                 .body(Body::empty())
-                .expect("Request"),
+                .expect("should request langtags.json from staging profile via query"),
         )
         .await
         .unwrap();
@@ -86,17 +86,17 @@ async fn index_page() {
     let query_response_staging_location = query_response_staging
         .headers()
         .get(LOCATION)
-        .expect("Location HTTP header");
+        .expect("should get Location HTTP header");
     assert_eq!(
         query_response_staging_location
             .to_str()
-            .expect("Location HTTP header value"),
+            .expect("should get Location HTTP header value"),
         "/langtags.json?staging=1"
     );
     const INDEX_BODY: &str = include_str!("../src/index.html");
     let body = axum::body::to_bytes(response.into_body(), INDEX_BODY.len())
         .await
-        .expect("Index page body");
+        .expect("should extract index page body");
     assert_eq!(std::str::from_utf8(&body), Ok(INDEX_BODY));
 }
 
@@ -109,7 +109,7 @@ async fn langtags_ext() {
             Request::builder()
                 .uri("/langtags.json")
                 .body(Body::empty())
-                .expect("Request"),
+                .expect("should request langtags.json via path"),
         )
         .await
         .unwrap();
@@ -119,7 +119,7 @@ async fn langtags_ext() {
             Request::builder()
                 .uri("/langtags.txt")
                 .body(Body::empty())
-                .expect("Request"),
+                .expect("should request langtags.txt via path"),
         )
         .await
         .unwrap();
@@ -129,7 +129,7 @@ async fn langtags_ext() {
             Request::builder()
                 .uri("/langtags.json?test=1")
                 .body(Body::empty())
-                .expect("Request"),
+                .expect("should request langtags.json from test profile via path"),
         )
         .await
         .unwrap();
@@ -139,7 +139,7 @@ async fn langtags_ext() {
             Request::builder()
                 .uri("/langtags.txt?test=1")
                 .body(Body::empty())
-                .expect("Request"),
+                .expect("should request langtags.txt from test profile via path"),
         )
         .await
         .unwrap();
@@ -149,20 +149,21 @@ async fn langtags_ext() {
             Request::builder()
                 .uri("/langtags.html")
                 .body(Body::empty())
-                .expect("Request"),
+                .expect("should request invalid path"),
         )
         .await
         .unwrap();
 
     #[inline]
+    //TODO: #[track_caller] when https://github.com/rust-lang/rust/issues/110011 is stablised.
     async fn response_to_str(resp: Response) -> String {
         String::from_utf8(
             axum::body::to_bytes(resp.into_body(), usize::MAX)
                 .await
-                .unwrap()
+                .expect("should extract repsonse body text")
                 .to_vec(),
         )
-        .unwrap()
+        .expect("should be utf8 string")
     }
 
     assert_eq!(
@@ -206,7 +207,7 @@ async fn status_page() {
             Request::builder()
                 .uri("/status")
                 .body(Body::empty())
-                .expect("Request"),
+                .expect("should request status JSON document"),
         )
         .await
         .unwrap();
@@ -228,7 +229,7 @@ async fn status_page() {
     .to_string();
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
-        .expect("Status body");
+        .expect("should extract Status JSON document");
     assert_eq!(std::str::from_utf8(&body), Ok(status_body.as_str()));
 }
 
@@ -238,7 +239,7 @@ async fn request_ldml_file(app: &mut Router, tag: &Tag) -> StatusCode {
             Request::builder()
                 .uri(format!("/{tag}"))
                 .body(Body::empty())
-                .expect("Request"),
+                .expect(&format!("should request LDML for \"{tag}\" ")),
         )
         .await
         .unwrap();
@@ -255,7 +256,7 @@ async fn query_tags() {
             Request::builder()
                 .uri(format!("/frm?query=tags"))
                 .body(Body::empty())
-                .expect("Request"),
+                .expect("should request all tagsets for `frm` langtag"),
         )
         .await
         .unwrap();
@@ -279,7 +280,7 @@ async fn simple_writing_system_request() {
 
     macro_rules! assert_tag_exists {
         ($tag:literal) => {
-            let tag = Tag::from_str($tag).expect("Tag");
+            let tag = Tag::from_str($tag).expect(concat!("should parse \"", $tag, '"'));
             assert_eq!(
                 request_ldml_file(&mut app, &tag).await,
                 StatusCode::OK,
@@ -294,7 +295,11 @@ async fn simple_writing_system_request() {
     assert_tag_exists!("eka-NG-x-ekajuk");
     assert_tag_exists!("eka-NG-x-ekajuk");
     assert_eq!(
-        request_ldml_file(&mut app, &Tag::from_str("en-KP").expect("Tag")).await,
+        request_ldml_file(
+            &mut app,
+            &Tag::from_str("en-KP").expect("should parse \"en-KP\"")
+        )
+        .await,
         StatusCode::NOT_FOUND
     );
 }
@@ -327,7 +332,7 @@ async fn palaso_writing_systems_list(profile: &str) {
     );
     let mut tags = generate_testing_tag_list(&cfg["test"].langtags).collect::<Vec<_>>();
     tags.sort();
-    let mut app = app(cfg).expect("Router");
+    let mut app = app(cfg).expect("lb::app should return configured Router");
     for (l, tag) in tags.into_iter().enumerate() {
         let status = request_ldml_file(&mut app, &tag).await;
         assert_eq!(

@@ -227,7 +227,7 @@ mod tests {
             ("zh-xiang", Tag::with_lang("hsn")),
         ];
         for (test, result) in &gf_cases {
-            let test: Tag = test.parse().expect("failed to parse test case");
+            let test: Tag = test.parse().expect("should parse grandfathered test case");
             assert_eq!(&test, result);
         }
     }

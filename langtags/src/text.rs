@@ -135,7 +135,7 @@ mod test {
     fn invalid_tagset() {
         let test = LangTags::from_reader(b"#*aa = *aa-ET = aa-Latn = aa-Latn-ET".as_slice())
             .err()
-            .expect("text::Error from langtags test case parse.");
+            .expect("should fail to parse mock langtags.txt");
         assert_eq!(
             test.to_string(),
             "Could not parse langtags.txt data, at line 1: failed to parse tag: #*aa"
@@ -150,7 +150,7 @@ mod test {
             aa-Arab = aa-Arab-ET"#
                 .as_slice(),
         )
-        .expect("LangTags test case.");
+        .expect("should fail to parse mock langtags.txt");
 
         let mut langtags = LangTags::default();
         langtags.tagsets = vec![
