@@ -59,7 +59,7 @@ async fn main() -> io::Result<()> {
     axum::serve(
         listener,
         app(cfg)?
-            // .layer(CompressionLayer::new())
+            .layer(CompressionLayer::new())
             .layer(TraceLayer::new_for_http())
             .into_make_service(),
     )
