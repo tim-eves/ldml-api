@@ -19,10 +19,7 @@ fn extension_form<'a, E: ParseError<&'a str>>(
     prefix: impl Parser<&'a str, Output = char, Error = E>,
     min: usize,
 ) -> impl Parser<&'a str, Output = &'a str, Error = E> {
-    recognize(preceded(
-        prefix, 
-        many1_count((dash, alphanums(min, 8)))
-    ))
+    recognize(preceded(prefix, many1_count((dash, alphanums(min, 8)))))
 }
 
 fn subtag<'a, O, E: ParseError<&'a str>>(
@@ -104,7 +101,8 @@ where
             context("private subtag", opt(subtag(private))),
         ),
         terminator,
-    ).parse_complete(input)?;
+    )
+    .parse_complete(input)?;
     tags.3.sort_unstable();
     tags.4.sort_unstable();
     Ok((
@@ -146,7 +144,8 @@ where
             fixed_parse!("no-bok", "nb"),
             fixed_parse!("no-nyn", "nn"),
         )),
-    ).parse_complete(input)
+    )
+    .parse_complete(input)
 }
 
 fn grandfathered_irregular<'a, E>(input: &'a str) -> IResult<&'a str, Tag, E>
@@ -174,7 +173,8 @@ where
             fixed_parse!("i-tay", "tay"),
             fixed_parse!("i-tsu", "tsu"),
         )),
-    ).parse_complete(input)
+    )
+    .parse_complete(input)
 }
 
 pub fn languagetag<'a, E>(input: &'a str) -> IResult<&'a str, Tag, E>
@@ -186,7 +186,8 @@ where
         langtag,
         privateuse,
         grandfathered_irregular,
-    )).parse_complete(input)
+    ))
+    .parse_complete(input)
 }
 
 #[cfg(test)]

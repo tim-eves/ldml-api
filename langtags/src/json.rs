@@ -210,25 +210,25 @@ mod test {
     #[test]
     fn headers() {
         let src = json!([
-                        {
-                            "regions": [ "AA", "BU", "CP", "DD", "EU", "FX", "GS", "HM", "NT", "QM", "SU", "TA", "UN", "XA", "YD", "ZR" ],
-                            "scripts": [ "Aran", "Cpmn", "Egyd", "Hira", "Inds", "Jamo", "Mero", "Moon", "Pcun", "Qaaa", "Roro", "Shui", "Visp", "Zinh" ],
-                            "tag": "_conformance"
-                        },
-                        {
-                            "tag": "_globalvar",
-                            "variants": [ "simple" ]
-                        },
-                        {
-                            "tag": "_phonvar",
-                            "variants": [ "alalc97", "fonipa", "fonkirsh", "fonnapa", "fonupa", "fonxsamp" ]
-                        },
-                        {
-                            "api": "1.2.1",
-                            "date": "2021-06-29",
-                            "tag": "_version"
-                        }
-                ]);
+            {
+                "regions": [ "AA", "BU", "CP", "DD", "EU", "FX", "GS", "HM", "NT", "QM", "SU", "TA", "UN", "XA", "YD", "ZR" ],
+                "scripts": [ "Aran", "Cpmn", "Egyd", "Hira", "Inds", "Jamo", "Mero", "Moon", "Pcun", "Qaaa", "Roro", "Shui", "Visp", "Zinh" ],
+                "tag": "_conformance"
+            },
+            {
+                "tag": "_globalvar",
+                "variants": [ "simple" ]
+            },
+            {
+                "tag": "_phonvar",
+                "variants": [ "alalc97", "fonipa", "fonkirsh", "fonnapa", "fonupa", "fonxsamp" ]
+            },
+            {
+                "api": "1.2.1",
+                "date": "2021-06-29",
+                "tag": "_version"
+            }
+        ]);
         assert_eq!(
             serde_json::from_value::<Vec<Header>>(src).unwrap(),
             vec![

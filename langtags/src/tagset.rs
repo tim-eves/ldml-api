@@ -142,24 +142,24 @@ mod test {
     #[test]
     fn tagset() {
         let src = json!({
-                        "full": "pt-Latn-BR",
-                        "iana": [ "Portuguese" ],
-                        "iso639_3": "por",
-                        "localname": "português",
-                        "localnames": [ "Português" ],
-                        "name": "Portuguese",
-                        "names": [ "Portugais", "Portugués", "Portugués del Uruguay", "Português", "Portunhol", "Portuñol", "Purtagaalee", "Uruguayan Portuguese" ],
-                        "region": "BR",
-                        "regionname": "Brazil",
-                        "regions": [ "AD", "AG", "AU", "BE", "BM", "CA", "CG", "CW", "DE", "ES", "FI", "FR", "GG", "GY", "IN", "JE", "JM", "MW", "PY", "RU", "SN", "SR", "US", "UY", "VC", "VE", "ZA", "ZM" ],
-                        "script": "Latn",
-                        "sldr": true,
-                        "suppress": true,
-                        "tag": "pt",
-                        "tags": [ "pt-BR", "pt-Latn" ],
-                        "variants": [ "abl1943", "ai1990", "colb1945" ],
-                        "windows": "pt-BR"
-                    });
+            "full": "pt-Latn-BR",
+            "iana": [ "Portuguese" ],
+            "iso639_3": "por",
+            "localname": "português",
+            "localnames": [ "Português" ],
+            "name": "Portuguese",
+            "names": [ "Portugais", "Portugués", "Portugués del Uruguay", "Português", "Portunhol", "Portuñol", "Purtagaalee", "Uruguayan Portuguese" ],
+            "region": "BR",
+            "regionname": "Brazil",
+            "regions": [ "AD", "AG", "AU", "BE", "BM", "CA", "CG", "CW", "DE", "ES", "FI", "FR", "GG", "GY", "IN", "JE", "JM", "MW", "PY", "RU", "SN", "SR", "US", "UY", "VC", "VE", "ZA", "ZM" ],
+            "script": "Latn",
+            "sldr": true,
+            "suppress": true,
+            "tag": "pt",
+            "tags": [ "pt-BR", "pt-Latn" ],
+            "variants": [ "abl1943", "ai1990", "colb1945" ],
+            "windows": "pt-BR"
+        });
         let ts: TagSet = serde_json::from_value(src).unwrap();
         assert_eq!(
             ts,
