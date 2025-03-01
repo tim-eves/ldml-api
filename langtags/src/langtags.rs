@@ -101,10 +101,10 @@ impl LangTags {
             tag.private().is_some_and(|tag_priv| tag_priv == ts_priv)
         });
         if key == *tag
-            || LangTags::valid_region(ts, tag.region())
-                && self.valid_variants(ts, tag)
+            || private_is_valid
                 && LangTags::valid_extensions(ts, tag.extensions())
-                && private_is_valid
+                && self.valid_variants(ts, tag)
+                && LangTags::valid_region(ts, tag.region())
         {
             Some(ts)
         } else {
