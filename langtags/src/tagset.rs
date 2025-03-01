@@ -159,8 +159,8 @@ mod test {
                         "tags": [ "pt-BR", "pt-Latn" ],
                         "variants": [ "abl1943", "ai1990", "colb1945" ],
                         "windows": "pt-BR"
-                    }).to_string();
-        let ts: TagSet = serde_json::from_str(&src).expect("TagSet value");
+                    });
+        let ts: TagSet = serde_json::from_value(src).unwrap();
         assert_eq!(
             ts,
             TagSet {
@@ -240,7 +240,7 @@ mod test {
                 "windows": "aa-Latn-ET"
             }
         ]))
-        .expect("LangTags test case.");
+        .unwrap();
         let test: Vec<_> = test
             .iter()
             .map(|ts| format!("{full}: {ts}", full = ts.full))

@@ -44,7 +44,7 @@ async fn index_page() {
                 .expect("Request"),
         )
         .await
-        .expect("Response");
+        .unwrap();
 
     let fallback_response = app
         .call(
@@ -54,7 +54,7 @@ async fn index_page() {
                 .expect("Request"),
         )
         .await
-        .expect("Response");
+        .unwrap();
 
     let query_response = app
         .call(
@@ -64,7 +64,7 @@ async fn index_page() {
                 .expect("Request"),
         )
         .await
-        .expect("Response");
+        .unwrap();
 
     let query_response_staging = app
         .oneshot(
@@ -74,7 +74,7 @@ async fn index_page() {
                 .expect("Request"),
         )
         .await
-        .expect("Response");
+        .unwrap();
 
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(fallback_response.status(), StatusCode::OK);
@@ -112,7 +112,7 @@ async fn langtags_ext() {
                 .expect("Request"),
         )
         .await
-        .expect("Response");
+        .unwrap();
 
     let txt_response = app
         .call(
@@ -122,7 +122,7 @@ async fn langtags_ext() {
                 .expect("Request"),
         )
         .await
-        .expect("Response");
+        .unwrap();
 
     let json_response_staging = app
         .call(
@@ -132,7 +132,7 @@ async fn langtags_ext() {
                 .expect("Request"),
         )
         .await
-        .expect("Response");
+        .unwrap();
 
     let txt_response_staging = app
         .call(
@@ -142,7 +142,7 @@ async fn langtags_ext() {
                 .expect("Request"),
         )
         .await
-        .expect("Response");
+        .unwrap();
 
     let notfound_response = app
         .oneshot(
@@ -152,7 +152,7 @@ async fn langtags_ext() {
                 .expect("Request"),
         )
         .await
-        .expect("Response");
+        .unwrap();
 
     #[inline]
     async fn response_to_str(resp: Response) -> String {
@@ -209,7 +209,7 @@ async fn status_page() {
                 .expect("Request"),
         )
         .await
-        .expect("Response");
+        .unwrap();
 
     assert_eq!(response.status(), StatusCode::OK);
 
@@ -241,7 +241,7 @@ async fn request_ldml_file(app: &mut Router, tag: &Tag) -> StatusCode {
                 .expect("Request"),
         )
         .await
-        .expect("Response");
+        .unwrap();
 
     response.status()
 }
@@ -258,7 +258,7 @@ async fn query_tags() {
                 .expect("Request"),
         )
         .await
-        .expect("Response");
+        .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 
     let body = axum::body::to_bytes(response.into_body(), 1024)

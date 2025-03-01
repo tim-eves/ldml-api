@@ -205,7 +205,7 @@ mod test {
     use crate::json::LangTags;
 
     use super::Header;
-    use serde_json::{json, Value};
+    use serde_json::json;
 
     #[test]
     fn headers() {
@@ -228,11 +228,9 @@ mod test {
                             "date": "2021-06-29",
                             "tag": "_version"
                         }
-                ]).to_string();
-        let db: Vec<Value> = serde_json::from_str(&src).expect("Array of JSON values");
+                ]);
         assert_eq!(
-            serde_json::from_value::<Vec<Header>>(Value::Array(db[0..4].into()))
-                .expect("Special tag value"),
+            serde_json::from_value::<Vec<Header>>(src).unwrap(),
             vec![
                 Header::Conformance {
                     regions: vec![
@@ -295,33 +293,36 @@ mod test {
 
     #[test]
     fn missing_headers() {
+        // Check missing `date` property is spotted.
         let src = serde_json::to_string_pretty(&json!([
             {
                 "api": "1.2.1",
                 "tag": "_version"
             }
-        ])).expect("could not pretty print JSON Value");
+        ]))
+        .unwrap();
         let langtags = LangTags::from_reader(Cursor::new(src.as_bytes()));
         assert_eq!(
             langtags.unwrap_err().to_string(),
             "Could not parse langtags.json data: expected header object \"_version/date\" at line 6, column 1",
             "{src}"
         );
-
+        // Check missing `api` property is spotted.
         let src = serde_json::to_string_pretty(&json!([
             {
                 "date": "2021-06-29",
                 "tag": "_version"
             }
-        ])).expect("could not pretty print JSON Value");
+        ]))
+        .unwrap();
         let langtags = LangTags::from_reader(Cursor::new(src.as_bytes()));
         assert_eq!(
             langtags.unwrap_err().to_string(),
             "Could not parse langtags.json data: expected header object \"_version/api\" at line 6, column 1",
             "{src}"
         );
-
-        let src = serde_json::to_string_pretty(&json!([])).expect("could not pretty print JSON Value");
+        // Check missing `_version` object is spotted.
+        let src = serde_json::to_string_pretty(&json!([])).unwrap();
         let langtags = LangTags::from_reader(Cursor::new(src.as_bytes()));
         assert_eq!(
             langtags.unwrap_err().to_string(),
