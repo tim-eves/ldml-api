@@ -38,14 +38,25 @@ impl Borrow<CoreLangTags> for LangTags {
 #[derive(Debug)]
 enum ErrorKind {
     Json(serde_json::Error),
-    MissingHeader { line: usize, column: usize, header: String },
+    MissingHeader {
+        line: usize,
+        column: usize,
+        header: String,
+    },
 }
 
 impl Display for ErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Json(err) => write!(f, "{err}"),
-            Self::MissingHeader{ line, column, header}  => write!(f, r#"expected header object "{header}" at line {line}, column {column}"#),
+            Self::MissingHeader {
+                line,
+                column,
+                header,
+            } => write!(
+                f,
+                "expected header object \"{header}\" at line {line}, column {column}"
+            ),
         }
     }
 }
@@ -56,13 +67,25 @@ pub struct Error(ErrorKind);
 impl Error {
     #[cold]
     fn missing_header<R: Read + Seek>(header: &str, reader: &mut R) -> Self {
-        let prefix_len = reader.stream_position().expect("could not get file read offset") as usize;
-        reader.rewind().expect("could not seek to start of file");
-        let mut prefix = String::with_capacity(prefix_len);
-        reader.take(prefix_len as u64).read_to_string(&mut prefix).expect("could nod read headers");
-        let line = prefix.lines().count();
-        let column = prefix_len - prefix.rfind('\n').unwrap_or_default() - 1;
-        return Self(ErrorKind::MissingHeader { line, column, header: header.into() }.into());
+        let prefix = reader
+            .stream_position()
+            .map(|prefix_len| String::with_capacity(prefix_len as usize))
+            .and_then(|mut prefix| {
+                reader
+                    .rewind()
+                    .and(
+                        reader
+                            .take(prefix.capacity() as u64)
+                            .read_to_string(&mut prefix),
+                    )
+                    .and(Ok(prefix))
+            })
+            .unwrap_or_default();
+        Self(ErrorKind::MissingHeader {
+            line: prefix.lines().count(),
+            column: prefix.len() - prefix.rfind('\n').unwrap_or_default() - 1,
+            header: header.into(),
+        })
     }
 }
 
@@ -151,9 +174,9 @@ impl LangTags {
 
         match (&langtags.version.is_empty(), &langtags.date.is_empty()) {
             (false, false) => (),
-            (true, true)   => return Err(Error::missing_header("_version", &mut reader)),
-            (true, false)  => return Err(Error::missing_header("_version/api", &mut reader)),
-            (false, true)  => return Err(Error::missing_header("_version/date", &mut reader)),
+            (true, true) => return Err(Error::missing_header("_version", &mut reader)),
+            (true, false) => return Err(Error::missing_header("_version/api", &mut reader)),
+            (false, true) => return Err(Error::missing_header("_version/date", &mut reader)),
         }
 
         // Remove the values that were headers, leaving only the valid TagSets.
