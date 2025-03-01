@@ -129,61 +129,35 @@ fn conformant_tag() {
 
 #[test]
 fn normal_forms() {
-    let ts = LTDB.orthographic_normal_form(&Tag::from_str("en-US").expect("Tag value"));
-    assert_eq!(
-        ts.expect("TagSet").full,
-        Tag::from_str("en-Latn-US").unwrap()
-    );
-    let ts = LTDB.orthographic_normal_form(&Tag::from_str("aeb-TN").expect("Tag value"));
-    assert_eq!(
-        ts.expect("TagSet").full,
-        Tag::from_str("aeb-Arab-TN").unwrap()
-    );
-    let ts = LTDB.orthographic_normal_form(&Tag::from_str("aeb-Arab").expect("Tag value"));
-    assert_eq!(
-        ts.expect("TagSet").full,
-        Tag::from_str("aeb-Arab-TN").unwrap()
-    );
-    let ts = LTDB.orthographic_normal_form(&Tag::from_str("aeb-Hebr").expect("Tag value"));
-    assert_eq!(
-        ts.expect("TagSet").full,
-        Tag::from_str("aeb-Hebr-IL").unwrap()
-    );
-    let ts = LTDB.orthographic_normal_form(&Tag::from_str("aeb-IL").expect("Tag value"));
-    assert_eq!(
-        ts.expect("TagSet").full,
-        Tag::from_str("aeb-Hebr-IL").unwrap()
-    );
-    let ts = LTDB.orthographic_normal_form(&Tag::from_str("aeb").expect("Tag value"));
-    assert_eq!(
-        ts.expect("TagSet").full,
-        Tag::from_str("aeb-Arab-TN").unwrap()
-    );
-    let ts = LTDB.orthographic_normal_form(&Tag::from_str("en-TW").expect("Tag value"));
-    assert_eq!(
-        ts.expect("TagSet").full,
-        Tag::from_str("en-Latn-US").unwrap()
-    );
-    let ts = LTDB.orthographic_normal_form(&Tag::from_str("en-TW-simple").expect("Tag value"));
-    assert_eq!(
-        ts.expect("TagSet").full,
-        Tag::from_str("en-Latn-US").unwrap()
-    );
-    let ts = LTDB.locale_normal_form(&Tag::from_str("en-TW").expect("Tag value"));
-    assert_eq!(
-        ts.expect("TagSet").full,
-        Tag::from_str("en-Latn-TW").unwrap()
-    );
-    let ts = LTDB.locale_normal_form(&Tag::from_str("dgl-Copt").expect("Tag value"));
-    assert_eq!(
-        ts.expect("TagSet").full,
-        Tag::from_str("dgl-Copt-SD-x-olnubian").unwrap()
-    );
-    // let ts = ltdb.locale_normal_form(&Tag::from_str("dgl-Copt-SD-a-test").expect("Tag value"));
-    // assert_eq!(
-    //     ts.expect("TagSet").full,
-    //     Tag::from_str("dgl-Copt-SD-x-olnubian").unwrap()
-    // );
+    macro_rules! test_normal_form {
+        (orthographic, $key:literal, $expected:literal) => {
+            test_normal_form!(orthographic_normal_form, $key, $expected)
+        };
+        (locale, $key:literal, $expected:literal) => {
+            test_normal_form!(locale_normal_form, $key, $expected)
+        };
+        ($form:ident, $key:literal, $expected:literal) => {
+            let ts = LTDB.$form(&Tag::from_str($key).expect("Tag value"));
+            assert_ne!(ts, None, "could not lookup: {}", $key);
+            assert_eq!(
+                ts.unwrap().full,
+                Tag::from_str($expected).expect("TagSet"),
+                ""
+            );
+        };
+    }
+    test_normal_form!(orthographic, "en-US", "en-Latn-US");
+    test_normal_form!(orthographic, "aeb-TN", "aeb-Arab-TN");
+    test_normal_form!(orthographic, "aeb-Arab", "aeb-Arab-TN");
+    test_normal_form!(orthographic, "aeb-Hebr", "aeb-Hebr-IL");
+    test_normal_form!(orthographic, "aeb-IL", "aeb-Hebr-IL");
+    test_normal_form!(orthographic, "aeb", "aeb-Arab-TN");
+    test_normal_form!(orthographic, "en-TW", "en-Latn-US");
+    test_normal_form!(orthographic, "en-TW-simple", "en-Latn-US");
+    test_normal_form!(locale, "en-TW", "en-Latn-TW");
+    test_normal_form!(locale, "dgl-Copt", "dgl-Copt-SD-x-olnubian");
+    // TODO: Figure out if this is supposed to fail or not
+    // test_normal_form!(locale, "dgl-Copt-SD-a-test", "dgl-Copt-SD-x-olnubian");
 }
 
 #[test]
