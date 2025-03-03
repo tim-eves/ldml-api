@@ -5,7 +5,6 @@ COPY . .
 RUN cargo install --path .
 
 FROM debian:bookworm-slim
-LABEL 
 LABEL org.opencontainers.image.description="Modern LDML API endpoint that uses langtags.json, adds etag support and full langtag validation."
 LABEL org.opencontainers.image.source=https://github.com/tim-eves/ldml-api
 LABEL org.opencontainers.image.licenses=MPL-2.0
