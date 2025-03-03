@@ -88,7 +88,7 @@ spec:
         - >-
           apt-get update; apt-get install -y curl webhook; apt-get clean;
           exec webhook -verbose
-          -urlprefix 'hooks'
+          -urlprefix=hooks
           -template
           -hooks=/webhooks/hooks.yaml
           -debug
