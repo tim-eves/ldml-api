@@ -1,5 +1,5 @@
 resources:
-- ../prod
+- ../prod/kustomize
 configMapGenerator: []
 secretGenerator:
 - name: ldml-api
