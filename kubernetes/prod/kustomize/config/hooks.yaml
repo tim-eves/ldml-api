@@ -18,5 +18,7 @@
             name: X-Hub-Signature
     - match:
         type: value
-        parameter: { source: payload, name: action }
-        value: 'published'
+        value: published
+        parameter:
+          source: payload
+          name: action
