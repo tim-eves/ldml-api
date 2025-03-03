@@ -1,8 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: ldml-api
-  namespace: wstech
+  name: api-endpoint
 spec:
   selector:
     workload.user.cattle.io/workloadselector: apps.deployment-wstech-ldml-api

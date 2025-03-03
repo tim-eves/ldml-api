@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: ldml-api-data
+  name: data-sets
   namespace: wstech
 spec:
   #storageClassName: longhorn

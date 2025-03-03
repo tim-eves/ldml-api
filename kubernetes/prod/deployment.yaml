@@ -1,8 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ldml-api
-  namespace: wstech
+  name: api-endpoint
 spec:
   replicas: 1
   selector:
@@ -28,7 +27,7 @@ spec:
                   values:
                     - apps.deployment-wstech-ldml-api
       containers:
-      - name: endpoint
+      - name: api-endpoint
         command:
           - ldml-api
           - '--listen=0.0.0.0:80'
@@ -129,4 +128,4 @@ spec:
       volumes:
       - name: data-sets
         persistentVolumeClaim:
-          claimName: ldml-api-data
+          claimName: data-sets

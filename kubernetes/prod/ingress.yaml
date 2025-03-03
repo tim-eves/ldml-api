@@ -1,8 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ldml-api
-  namespace: wstech
+  name: api
 spec:
   ingressClassName: nginx
   rules:
@@ -11,7 +10,7 @@ spec:
         paths:
         - backend:
             service:
-              name: api
+              name: api-endpoint
               port:
                 name: http
           path: /
