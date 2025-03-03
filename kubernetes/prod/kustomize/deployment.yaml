@@ -90,6 +90,7 @@ spec:
           exec webhook -verbose
           -urlprefix=hooks
           -template
+          -x-request-id
           -hooks=/webhooks/hooks.yaml
         ports:
         - name: webhook
