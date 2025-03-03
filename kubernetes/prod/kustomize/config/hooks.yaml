@@ -1,4 +1,4 @@
-- id: deploy
+- id: freshen
   execute-command: /webhooks/deploy.sh
   http-methods: [POST]
   trigger-rule:
@@ -22,3 +22,34 @@
         parameter:
           source: payload
           name: action
+- id: deploy
+  execute-command: /webhooks/deploy.sh
+  http-methods: [POST]
+  trigger-rule:
+    and:
+    - or:
+      - match:
+          type: payload-hmac-sha256
+          secret: '{{ getenv "DEPLOY_KEY" }}'
+          parameter:
+            source: header
+            name: X-Hub-Signature-256
+      - match:
+          type: payload-hmac-sha1
+          secret: '{{ getenv "DEPLOY_KEY" }}'
+          parameter:
+            source: header
+            name: X-Hub-Signature
+    - and:
+      - match:
+          type: value
+          value: published
+          parameter:
+            source: payload
+            name: action
+      - match:
+          type: value
+          value: latest
+          parameter:
+            source: payload
+            name: registry_package.package_version.container_metadata.tag.name
