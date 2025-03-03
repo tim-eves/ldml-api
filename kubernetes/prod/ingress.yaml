@@ -9,10 +9,10 @@ spec:
     - host: ldml.api.languagetechnology.org
       http:
         paths:
-          - backend:
-              service:
-                name: ldml-api
-                port:
-                  name: http
-            path: /
-            pathType: Prefix
+        - backend:
+            service:
+              name: api
+              port:
+                name: http
+          path: /
+          pathType: Prefix

@@ -4,10 +4,9 @@ metadata:
   name: ldml-api
   namespace: wstech
 spec:
-  ports:
-    - name: http
-      port: 80
-      protocol: TCP
   selector:
     workload.user.cattle.io/workloadselector: apps.deployment-wstech-ldml-api
   type: ClusterIP
+  ports:
+  - name: http
+    port: 80

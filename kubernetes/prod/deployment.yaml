@@ -28,89 +28,94 @@ spec:
                   values:
                     - apps.deployment-wstech-ldml-api
       containers:
-        - name: endpoint
-          command:
-            - ldml-api
-            - '--listen=0.0.0.0:80'
-            - '--config=/var/lib/ldml-api/config.json'
-            - '--profile=production'
-          env:
-            - name: RUST_LOG
-              value: ldml_api=trace,tower_http=trace,axum=trace
-            - name: TOKIO_WORKER_THREADS
-              value: '8'
-          image: ghcr.io/tim-eves/ldml-api:latest
-          livenessProbe:
-            httpGet:
-              path: /status
-              port: http
-            periodSeconds: 10
-            timeoutSeconds: 1
-            successThreshold: 1
-            failureThreshold: 1
-          startupProbe:
-            httpGet:
-              path: /status
-              port: http
-            periodSeconds: 10
-            timeoutSeconds: 1
-            successThreshold: 1
-            failureThreshold: 3
-          ports:
-            - containerPort: 80
-              name: http
-          resources:
-            limits:
-              memory: 256Mi
-            requests:
-              memory: 128Mi
-          volumeMounts:
-            - mountPath: /var/lib/ldml-api/sldr
-              name: data-sets
-              readOnly: true
-              subPath: sldr
-            - mountPath: /var/lib/ldml-api/langtags
-              name: data-sets
-              readOnly: true
-              subPath: langtags
+      - name: endpoint
+        command:
+          - ldml-api
+          - '--listen=0.0.0.0:80'
+          - '--config=/var/lib/ldml-api/config.json'
+          - '--profile=production'
+        env:
+          - name: RUST_LOG
+            value: ldml_api=trace,tower_http=trace,axum=trace
+          - name: TOKIO_WORKER_THREADS
+            value: '8'
+        image: ghcr.io/tim-eves/ldml-api:latest
+        livenessProbe:
+          httpGet:
+            path: /status
+            port: http
+          periodSeconds: 10
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 1
+        startupProbe:
+          httpGet:
+            path: /status
+            port: http
+          periodSeconds: 10
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 3
+        ports:
+          - containerPort: 80
+            name: http
+        resources:
+          limits:
+            memory: 256Mi
+          requests:
+            memory: 128Mi
+        volumeMounts:
+          - mountPath: /var/lib/ldml-api/sldr
+            name: data-sets
+            readOnly: true
+            subPath: sldr
+          - mountPath: /var/lib/ldml-api/langtags
+            name: data-sets
+            readOnly: true
+            subPath: langtags
 
       initContainers:
-      - name: langtags-db
+      - name: update-langtags-db
         image: alpine/curl:8.12.1
         workingDir: /mnt/
-        command: [ '/bin/sh', '-c' ]
+        env:
+        - name: STAGING_URL
+          value: https://github.com/silnrsi/langtags/releases/download/staging/langtags.json
+        - name: PRODUCTION_URL
+          value: https://github.com/silnrsi/langtags/releases/latest/download/langtags.json
+        command: [ '/bin/sh', '-ec' ]
         args:
         - >-
           mkdir -p langtags/staging; mkdir -p langtags/production; cd langtags; 
-          curl --silent --location --etag-save staging/etag --etag-compare staging/etag
-          https://github.com/silnrsi/langtags/releases/download/staging/langtags.json
+          curl --silent --location --etag-save staging/etag --etag-compare staging/etag ${STAGING_URL}
           --output staging/langtags.json;
-          curl --silent --location --etag-save production/etag --etag-compare production/etag
-          https://github.com/silnrsi/langtags/releases/latest/download/langtags.json
+          curl --silent --location --etag-save production/etag --etag-compare production/etag ${PRODUCTION_URL}
           --output production/langtags.json;
         resources:
-          limits:
+          requests: &guarenteed
             memory: 64Mi
-          requests:
-            memory: 64Mi
+          limits: *guarenteed
         volumeMounts: 
         - mountPath: /mnt
           name: data-sets
 
-      - name: sldr-data
+      - name: update-sldr-data
         image: alpine/curl:8.12.1
         workingDir: /mnt/
-        command: [ '/bin/sh', '-c' ]
+        env:
+        - name: STAGING_URL
+          value: https://github.com/silnrsi/sldr/releases/download/staging/sldr.zip
+        - name: PRODUCTION_URL
+          value: https://github.com/silnrsi/sldr/releases/latest/download/sldr.zip
+        command: [ '/bin/sh', '-ec' ]
         args:
         - >-
           mkdir -p sldr/staging; mkdir -p sldr/production; 
           cd sldr/staging; 
-          curl --silent --location --etag-save etag --etag-compare etag
-          https://github.com/silnrsi/sldr/releases/download/staging/sldr.zip
+          curl --silent --location --etag-save etag --etag-compare etag ${STAGING_URL}
           | unzip -o - || true;
           cd ../production;
-          curl --silent --location --etag-save etag --etag-compare etag
-          https://github.com/silnrsi/sldr/releases/latest/download/sldr.zip
+          curl --silent --location --etag-save etag --etag-compare etag ${PRODUCTION_URL}
           | unzip -o - || true;
         resources:
           limits:

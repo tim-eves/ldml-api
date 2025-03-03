@@ -5,8 +5,8 @@ labels:
   includeSelectors: true
 resources:
 - deployment.yaml
-- service.yaml
 - ingress.yaml
+- service.yaml
 - storage.yaml
 generatorOptions:
   disableNameSuffixHash: true
