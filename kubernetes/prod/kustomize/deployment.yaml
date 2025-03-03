@@ -91,7 +91,6 @@ spec:
           -urlprefix=hooks
           -template
           -hooks=/webhooks/hooks.yaml
-          -debug
         ports:
         - name: webhook
           containerPort: 9000
