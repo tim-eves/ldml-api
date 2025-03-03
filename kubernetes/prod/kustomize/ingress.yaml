@@ -15,8 +15,8 @@ spec:
                 name: http
           path: /
           pathType: Prefix
-        - path: /hooks/deploy
-          pathType: Exact
+        - path: /hooks/
+          pathType: Prefix
           backend:
             service:
               name: api-endpoint
