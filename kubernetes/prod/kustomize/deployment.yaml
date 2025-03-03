@@ -87,10 +87,11 @@ spec:
         args:
         - >-
           apt-get update; apt-get install -y curl webhook; apt-get clean;
-          exec webhook
+          exec webhook -verbose
           -urlprefix 'hooks'
           -template
           -hooks=/webhooks/hooks.yaml
+          -debug
         ports:
         - name: webhook
           containerPort: 9000
