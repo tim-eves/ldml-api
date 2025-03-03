@@ -1,0 +1,22 @@
+- id: deploy
+  execute-command: /webhooks/deploy.sh
+  http-methods: [POST]
+  trigger-rule:
+    and:
+    - or:
+      - match:
+          type: payload-hmac-sha256
+          secret: '{{ getenv "DEPLOY_KEY" }}'
+          parameter:
+            source: header
+            name: X-Hub-Signature-256
+      - match:
+          type: payload-hmac-sha1
+          secret: '{{ getenv "DEPLOY_KEY" }}'
+          parameter:
+            source: header
+            name: X-Hub-Signature
+    - match:
+        type: value
+        parameter: { source: payload, name: action }
+        value: 'published'

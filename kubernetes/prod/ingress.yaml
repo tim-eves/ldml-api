@@ -15,3 +15,10 @@ spec:
                 name: http
           path: /
           pathType: Prefix
+        - path: /hooks/deploy
+          pathType: Exact
+          backend:
+            service:
+              name: api-endpoint
+              port:
+                name: webhook

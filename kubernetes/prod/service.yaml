@@ -9,3 +9,7 @@ spec:
   ports:
   - name: http
     port: 80
+  - name: webhook
+    appProtocol: http
+    port: 9000
+

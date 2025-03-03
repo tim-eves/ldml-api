@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-deploy
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: api-deployer
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: redeploy
+subjects:
+- kind: ServiceAccount
+  name: api-deploy
+roleRef:
+  kind: Role
+  name: api-deployer
+  apiGroup: rbac.authorization.k8s.io

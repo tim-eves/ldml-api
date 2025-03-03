@@ -4,9 +4,15 @@ labels:
 - pairs:
     app: ldml-api
   includeSelectors: true
+configMapGenerator:
+- name: api
+  files:
+  - config/deploy.sh
+  - config/hooks.yaml
 resources:
 - deployment.yaml
 - ingress.yaml
+- rbac.yaml
 - service.yaml
 - storage.yaml
 generatorOptions:

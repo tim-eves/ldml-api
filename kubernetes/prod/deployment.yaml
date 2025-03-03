@@ -15,6 +15,7 @@ spec:
         workload.user.cattle.io/workloadselector: apps.deployment-wstech-ldml-api
       namespace: wstech
     spec:
+      serviceAccountName: api-deploy
       restartPolicy: Always
       affinity:
         podAffinity:
@@ -73,6 +74,31 @@ spec:
             readOnly: true
             subPath: langtags
 
+      - name: deploy-endpoint
+        image: debian:bookworm-slim
+        resources:
+          requests: &guarenteed
+            memory: "256Mi" 
+          limits: *guarenteed
+        command: [sh, -ec]
+        env:
+        - { name: DEPLOY_KEY, valueFrom: { secretKeyRef: { name: ldml-api, key: deploy-key } } }
+        - { name: DEPLOYMENT_NAME, value: ldml-api-endpoint }
+        args:
+        - >-
+          apt-get update; apt-get install -y curl webhook; apt-get clean;
+          exec webhook
+          -urlprefix 'hooks'
+          -template
+          -hooks=/webhooks/hooks.yaml
+        ports:
+        - name: webhook
+          containerPort: 9000
+        volumeMounts:
+        - name: webhooks
+          mountPath: /webhooks
+          readOnly: true
+
       initContainers:
       - name: update-langtags-db
         image: alpine/curl:8.12.1
@@ -129,3 +155,12 @@ spec:
       - name: data-sets
         persistentVolumeClaim:
           claimName: data-sets
+      - name: webhooks
+        configMap:
+          name: api
+          items:
+          - key: deploy.sh
+            path: deploy.sh
+            mode: 365
+          - key: hooks.yaml
+            path: hooks.yaml

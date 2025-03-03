@@ -1,6 +1,10 @@
 resources:
 - ../prod
 configMapGenerator: []
+secretGenerator:
+- name: ldml-api
+  literals:
+  - deploy-key=none 
 patches:
 - target:
     group: apps
