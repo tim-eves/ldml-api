@@ -5,9 +5,10 @@ COPY . .
 RUN cargo install --path .
 
 FROM debian:bookworm-slim
+LABEL org.opencontainers.image.authors="tim_eves@sil.org"
 LABEL org.opencontainers.image.description="Modern LDML API endpoint that uses langtags.json, adds etag support and full langtag validation."
-LABEL org.opencontainers.image.source=https://github.com/tim-eves/ldml-api
-LABEL org.opencontainers.image.licenses=MPL-2.0
+LABEL org.opencontainers.image.source="https://github.com/tim-eves/ldml-api"
+LABEL org.opencontainers.image.licenses="MPL-2.0"
 ENV LDML_DEFAULT_PROFILE=production
 ENV LDML_CONFIG=/var/lib/ldml-api/config.json
 RUN --mount=type=cache,target=/var/cache/apt \
