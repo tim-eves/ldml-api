@@ -220,7 +220,7 @@ struct WSParams {
     uid: Option<UniqueID>,
 }
 
-#[instrument(skip(cfg))]
+#[instrument(skip(cfg), fields(%ws))]
 async fn writing_system_tags(ws: &Tag, cfg: &Config) -> impl IntoResponse {
     query_tags(ws, &cfg.langtags).ok_or_else(|| {
         (
@@ -230,7 +230,7 @@ async fn writing_system_tags(ws: &Tag, cfg: &Config) -> impl IntoResponse {
     })
 }
 
-#[instrument(skip(cfg))]
+#[instrument(skip(cfg), fields(%ws))]
 async fn fetch_writing_system_ldml(ws: &Tag, params: WSParams, cfg: &Config) -> impl IntoResponse {
     let ext = params.ext.as_deref().unwrap_or("xml");
     let flatten = *params.flatten.unwrap_or(Toggle::ON);
@@ -274,7 +274,7 @@ async fn fetch_writing_system_ldml(ws: &Tag, params: WSParams, cfg: &Config) -> 
     .map(|resp| (headers, resp))
 }
 
-#[instrument(skip(cfg))]
+#[instrument(skip(cfg), fields(%ws))]
 async fn demux_writing_system(
     Path(ws): Path<Tag>,
     Query(params): Query<WSParams>,
@@ -297,7 +297,7 @@ async fn demux_writing_system(
     }
 }
 
-#[instrument(skip(langtags))]
+#[instrument(fields(%ws), skip(langtags))]
 fn query_tags(ws: &Tag, langtags: &LangTags) -> Option<String> {
     use langtags::tagset::render_equivalence_set;
 
@@ -310,7 +310,7 @@ fn query_tags(ws: &Tag, langtags: &LangTags) -> Option<String> {
         .reduce(|resp, ref set| resp + "\n" + set)
 }
 
-#[instrument(ret, skip(langtags))]
+#[instrument(ret, fields(%ws), skip(langtags))]
 fn find_ldml_file(ws: &Tag, sldr_dir: &path::Path, langtags: &LangTags) -> Option<path::PathBuf> {
     // Lookup the tag set and generate a prefered sorted list.
     let tagset = langtags.orthographic_normal_form(ws)?;
