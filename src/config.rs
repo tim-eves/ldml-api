@@ -1,19 +1,23 @@
 use langtags::json::LangTags;
-use serde_json::Value;
+use serde::Deserialize;
 use std::{
     collections::HashMap,
-    fs::File,
+    fmt::Display,
+    fs::{self, File},
     io::{self, BufReader, Read},
     ops::Index,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Deserialize)]
 pub struct Config {
     pub sendfile_method: Option<String>,
+    #[serde(skip_deserializing)]
     pub langtags: LangTags,
+    #[serde(rename = "langtags")]
     pub langtags_dir: PathBuf,
+    #[serde(rename = "sldr")]
     pub sldr_dir: PathBuf,
 }
 
@@ -23,10 +27,75 @@ impl Config {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Profiles {
     inner: ProfilesInner,
     default: Option<Arc<Config>>,
+}
+
+#[derive(Debug)]
+enum ErrorKind {
+    IO(PathBuf, io::Error),
+    Json(serde_json::Error),
+    LangTags(langtags::json::Error),
+}
+
+#[derive(Debug)]
+pub struct Error(ErrorKind);
+
+impl Error {
+    #[inline]
+    pub fn with_io_error(path: impl AsRef<Path>, err: io::Error) -> Self {
+        Error(ErrorKind::IO(path.as_ref().to_owned(), err))
+    }
+
+    pub fn as_io_error(&self) -> Option<&io::Error> {
+        if let ErrorKind::IO(_, ref err) = self.0 {
+            Some(err)
+        } else {
+            None
+        }
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(value: serde_json::Error) -> Self {
+        Error(ErrorKind::Json(value))
+    }
+}
+
+impl From<langtags::json::Error> for Error {
+    fn from(value: langtags::json::Error) -> Self {
+        Error(ErrorKind::LangTags(value))
+    }
+}
+
+impl From<ErrorKind> for Error {
+    fn from(value: ErrorKind) -> Self {
+        Error(value)
+    }
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match &self.0 {
+            ErrorKind::IO(_, err) => Some(err),
+            ErrorKind::Json(err) => Some(err),
+            ErrorKind::LangTags(err) => Some(err),
+        }
+    }
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.0 {
+            ErrorKind::IO(path, err) => {
+                write!(f, "Error accessing: {path}: {err}", path = path.display())
+            }
+            ErrorKind::Json(err) => write!(f, "Could not parse config: {err}"),
+            ErrorKind::LangTags(err) => write!(f, "{err}"),
+        }
+    }
 }
 
 type ProfilesInner = HashMap<String, Arc<Config>>;
@@ -50,59 +119,29 @@ impl Profiles {
         self
     }
 
-    fn make_error<E: Into<Box<dyn std::error::Error + Send + Sync>>>(err: E) -> io::Error {
-        io::Error::new(io::ErrorKind::InvalidData, err)
-    }
+    // fn make_error<E: Into<Box<dyn std::error::Error + Send + Sync>>>(err: E) -> io::Error {
+    //     io::Error::new(io::ErrorKind::InvalidData, err)
+    // }
 
     pub fn get(&self, profile: &str) -> Option<&Arc<Config>> {
         self.inner.get(profile).or(self.default.as_ref())
     }
 
-    pub fn from_reader<R: Read>(reader: R) -> io::Result<Profiles> {
-        let cfg: Value = serde_json::from_reader(reader)?;
+    pub fn from_reader<R: Read>(reader: R) -> Result<Profiles, Error> {
+        let configs = serde_json::from_reader::<_, HashMap<String, Config>>(reader)?
+            .into_iter()
+            .map(|(profile, mut config)| {
+                let langtags_path = config.langtags_dir.join("langtags.json");
+                // Call read_dir to check the sldr data set path exists and is accessible.
+                let _ = fs::read_dir(&config.sldr_dir)
+                    .map_err(|err| Error::with_io_error(&config.sldr_dir, err))?;
+                let langtags_file = File::open(&langtags_path)
+                    .map_err(|err| Error::with_io_error(langtags_path, err))?;
+                config.langtags = LangTags::from_reader(BufReader::new(langtags_file))?;
 
-        let profiles = cfg
-            .as_object()
-            .ok_or_else(|| Self::make_error("profiles object parse failed".to_string()))?;
-        let mut configs = ProfilesInner::with_capacity(profiles.len());
-        // Read defined profiles
-        for (name, v) in profiles.iter() {
-            let mut sendfile_method = Default::default();
-            let mut langtags_dir = Default::default();
-            let mut sldr_dir = Default::default();
-
-            v.as_object()
-                .ok_or_else(|| Self::make_error(format!("\"{name}\": profile parse failed")))
-                .and_then(|tbl| {
-                    sendfile_method = tbl
-                        .get("sendfile_method")
-                        .and_then(Value::as_str)
-                        .map(str::to_string);
-                    sldr_dir = tbl["sldr"].as_str().map(PathBuf::from).ok_or_else(|| {
-                        Self::make_error(format!("\"{name}\".sldr: path parse failed"))
-                    })?;
-                    langtags_dir =
-                        tbl["langtags"].as_str().map(PathBuf::from).ok_or_else(|| {
-                            Self::make_error(format!("\"{name}\".langtags: path parse failed"))
-                        })?;
-                    Ok(())
-                })?;
-
-            let langtags_path = langtags_dir.join("langtags.json");
-            let reader = BufReader::new(File::open(&langtags_path)?);
-            let langtags = LangTags::from_reader(reader).map_err(Self::make_error)?;
-
-            configs.insert(
-                name.to_owned(),
-                Config {
-                    sendfile_method,
-                    langtags,
-                    langtags_dir,
-                    sldr_dir,
-                }
-                .into(),
-            );
-        }
+                Ok((profile, config.into()))
+            })
+            .collect::<Result<ProfilesInner, Error>>()?;
 
         Ok(Profiles {
             inner: configs,
@@ -133,8 +172,10 @@ mod test {
         let res = Profiles::from_reader(&br"hang on this isn't JSON!"[..])
             .err()
             .expect("should not parse invalid JSON");
-        assert_eq!(res.kind(), std::io::ErrorKind::InvalidData);
-        assert_eq!(res.to_string(), "expected value at line 1 column 1");
+        assert_eq!(
+            res.to_string(),
+            "Could not parse config: expected value at line 1 column 1"
+        );
     }
 
     #[test]
@@ -143,17 +184,50 @@ mod test {
             json!(
                 {
                     "production": {
-                        "langtags": "/data/",
-                        "sldr": "/data/sldr/"
+                        "langtags": "/not-here/",
+                        "sldr": "tests"
                     }
                 }
             )
             .to_string()
             .as_bytes(),
         )
-        .err()
-        .expect("should not parse mock config.json with invalid langtags path");
-        assert_eq!(res.kind(), std::io::ErrorKind::NotFound);
+        .expect_err("should not parse mock config.json with invalid langtags path");
+        assert!(res.as_io_error().is_some(), "should be io::Error: {res}");
+        assert_eq!(
+            res.as_io_error().unwrap().kind(),
+            std::io::ErrorKind::NotFound
+        );
+        assert_eq!(
+            res.to_string(),
+            "Error accessing: /not-here/langtags.json: No such file or directory (os error 2)"
+        )
+    }
+
+    #[test]
+    fn missing_sldr() {
+        let res = Profiles::from_reader(
+            json!(
+                {
+                    "production": {
+                        "langtags": "tests/short",
+                        "sldr": "/not-here"
+                    }
+                }
+            )
+            .to_string()
+            .as_bytes(),
+        )
+        .expect_err("should not parse mock config.json with invalid langtags path");
+        assert!(res.as_io_error().is_some(), "should be io::Error: {res}");
+        assert_eq!(
+            res.as_io_error().unwrap().kind(),
+            std::io::ErrorKind::NotFound
+        );
+        assert_eq!(
+            res.to_string(),
+            "Error accessing: /not-here: No such file or directory (os error 2)"
+        )
     }
 
     #[test]
@@ -163,12 +237,12 @@ mod test {
                 {
                     "staging": {
                         "langtags": "tests/short/",
-                        "sldr": "/staging/data/sldr/"
+                        "sldr": "tests"
                     },
                     "production": {
                         "sendfile_method": "X-Accel-Redirect",
                         "langtags": "tests/short/",
-                        "sldr": "/data/sldr/"
+                        "sldr": "tests"
                     }
                 }
             )
@@ -352,7 +426,7 @@ mod test {
                 langtags: LangTags::from_reader(Cursor::new(langtags_json))
                     .expect("should parse test langtags.json"),
                 langtags_dir: "tests/short/".into(),
-                sldr_dir: "/data/sldr/".into(),
+                sldr_dir: "tests".into(),
             }
             .into(),
         );
@@ -363,7 +437,7 @@ mod test {
                 langtags: LangTags::from_reader(Cursor::new(langtags_json))
                     .expect("should parse test langtags.json"),
                 langtags_dir: "tests/short/".into(),
-                sldr_dir: "/staging/data/sldr/".into(),
+                sldr_dir: "tests".into(),
             }
             .into(),
         );

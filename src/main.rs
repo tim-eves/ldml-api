@@ -1,7 +1,10 @@
 use std::{fs::File, io, net::SocketAddr, path};
 
 use clap::Parser;
-use ldml_api::{app, config};
+use ldml_api::{
+    app,
+    config::{self, Error},
+};
 use tokio::net::TcpListener;
 use tower_http::{compression::CompressionLayer, trace::TraceLayer};
 
@@ -39,14 +42,15 @@ async fn main() -> io::Result<()> {
 
     // Load configuraion
     let cfg = File::open(&args.config)
+        .map_err(|err| Error::with_io_error(&args.config, err))
         .and_then(config::Profiles::from_reader)
-        .unwrap_or_else(|err: io::Error| {
-            tracing::error!(
-                "Error loading config: {file}: {message}",
-                file = args.config.display(),
-                message = err.to_string()
+        .unwrap_or_else(|err| {
+            tracing::error!("Error loading config: {message}", message = err.to_string());
+            std::process::exit(
+                err.as_io_error()
+                    .and_then(|err| err.raw_os_error())
+                    .unwrap_or(1),
             );
-            std::process::exit(err.raw_os_error().unwrap_or_default());
         })
         .set_default(args.profile.as_str());
     tracing::info!(
