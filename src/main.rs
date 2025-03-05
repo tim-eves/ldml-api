@@ -15,9 +15,9 @@ struct Args {
     /// Path to config file
     config: path::PathBuf,
 
-    #[arg(long, default_value = "production")]
+    #[arg(long)]
     /// Default profile to use when staging argument not set in a request
-    profile: String,
+    profile: Option<String>,
 
     #[arg(short, long, default_value = "0.0.0.0:3000")]
     listen: SocketAddr,
@@ -41,9 +41,16 @@ async fn main() -> io::Result<()> {
     let args = Args::parse();
 
     // Load configuraion
-    let cfg = File::open(&args.config)
+    let profiles = File::open(&args.config)
         .map_err(|err| Error::with_io_error(&args.config, err))
-        .and_then(config::Profiles::from_reader)
+        .and_then(|file| {
+            let profiles = config::Profiles::from_reader(file)?;
+            if let Some(default) = args.profile.clone() {
+                profiles.set_fallback(default.as_str())
+            } else {
+                Ok(profiles)
+            }
+        })
         .unwrap_or_else(|err| {
             tracing::error!("Error loading config: {message}", message = err.to_string());
             std::process::exit(
@@ -51,18 +58,17 @@ async fn main() -> io::Result<()> {
                     .and_then(|err| err.raw_os_error())
                     .unwrap_or(1),
             );
-        })
-        .set_default(args.profile.as_str());
+        });
     tracing::info!(
-        "loaded profiles: {profiles}",
-        profiles = cfg.names().collect::<Vec<&str>>().join(", ")
+        "loaded profiles: *{profiles}",
+        profiles = profiles.names().collect::<Vec<&str>>().join(", ")
     );
 
     tracing::debug!("listening on {addr}", addr = args.listen);
     let listener = TcpListener::bind(&args.listen).await?;
     axum::serve(
         listener,
-        app(cfg)?
+        app(profiles)?
             .layer(CompressionLayer::new())
             .layer(TraceLayer::new_for_http())
             .into_make_service(),

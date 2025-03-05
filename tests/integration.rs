@@ -22,7 +22,8 @@ fn parse_config(langtags: impl AsRef<Path>, sldr: impl AsRef<Path>) -> Profiles 
             .as_bytes(),
     )
     .expect("should parse generated configuration")
-    .set_default("test")
+    .set_fallback("test")
+    .expect(" should set default profile to: \"test\"")
 }
 
 static PROFILES: LazyLock<Profiles> = LazyLock::new(|| parse_config("tests/short", "tests"));
@@ -214,7 +215,7 @@ async fn status_page() {
 
     assert_eq!(response.status(), StatusCode::OK);
 
-    let profile = PROFILES["test"].clone();
+    let profile = PROFILES.fallback().clone();
     let status_body = json!({
         "service": env!("CARGO_PKG_NAME"),
         "version": env!("CARGO_PKG_VERSION"),
@@ -330,7 +331,7 @@ async fn palaso_writing_systems_list(profile: &str) {
         src_top_level.join("data/langtags").join(profile),
         src_top_level.join("data/sldr").join(profile),
     );
-    let mut tags = generate_testing_tag_list(&cfg["test"].langtags).collect::<Vec<_>>();
+    let mut tags = generate_testing_tag_list(&cfg.fallback().langtags).collect::<Vec<_>>();
     tags.sort();
     let mut app = app(cfg).expect("lb::app should return configured Router");
     for (l, tag) in tags.into_iter().enumerate() {

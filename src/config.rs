@@ -1,24 +1,26 @@
 use langtags::json::LangTags;
 use serde::Deserialize;
 use std::{
-    collections::HashMap,
+    collections::BTreeMap,
     fmt::Display,
     fs::{self, File},
     io::{self, BufReader, Read},
-    ops::Index,
     path::{Path, PathBuf},
     sync::Arc,
 };
 
 #[derive(Debug, PartialEq, Deserialize)]
+#[serde(tag = "name")]
 pub struct Config {
-    pub sendfile_method: Option<String>,
     #[serde(skip_deserializing)]
-    pub langtags: LangTags,
+    pub name: String,
     #[serde(rename = "langtags")]
     pub langtags_dir: PathBuf,
     #[serde(rename = "sldr")]
     pub sldr_dir: PathBuf,
+    pub sendfile_method: Option<String>,
+    #[serde(skip_deserializing)]
+    pub langtags: LangTags,
 }
 
 impl Config {
@@ -29,8 +31,7 @@ impl Config {
 
 #[derive(Debug, Clone)]
 pub struct Profiles {
-    inner: ProfilesInner,
-    default: Option<Arc<Config>>,
+    inner: Vec<Arc<Config>>,
 }
 
 #[derive(Debug)]
@@ -38,6 +39,7 @@ enum ErrorKind {
     IO(PathBuf, io::Error),
     Json(serde_json::Error),
     LangTags(langtags::json::Error),
+    Default(String),
 }
 
 #[derive(Debug)]
@@ -82,6 +84,7 @@ impl std::error::Error for Error {
             ErrorKind::IO(_, err) => Some(err),
             ErrorKind::Json(err) => Some(err),
             ErrorKind::LangTags(err) => Some(err),
+            ErrorKind::Default(_) => None,
         }
     }
 }
@@ -94,69 +97,61 @@ impl Display for Error {
             }
             ErrorKind::Json(err) => write!(f, "Could not parse config: {err}"),
             ErrorKind::LangTags(err) => write!(f, "{err}"),
+            ErrorKind::Default(default) => write!(f, "default profile \"{default}\" not in config"),
         }
     }
 }
 
-type ProfilesInner = HashMap<String, Arc<Config>>;
-
-impl Index<&str> for Profiles {
-    type Output = Arc<Config>;
-
-    fn index(&self, index: &str) -> &Self::Output {
-        self.get(index).expect("should get config for profile")
-    }
-}
-
 impl Profiles {
-    pub fn set_default<S>(mut self, default: impl Into<Option<S>>) -> Self
-    where
-        S: AsRef<str>,
-    {
-        self.default = default
-            .into()
-            .and_then(|s| Some(self.inner.get(s.as_ref())?.clone()));
-        self
+    pub fn set_fallback(mut self, default: impl AsRef<str>) -> Result<Self, Error> {
+        let default = default.as_ref();
+        self.inner
+            .iter()
+            .position(|cfg| cfg.name == default)
+            .map(|def_idx| {
+                self.inner.swap(def_idx, 0);
+                self
+            })
+            .ok_or(Error(ErrorKind::Default(default.to_owned())))
     }
 
     // fn make_error<E: Into<Box<dyn std::error::Error + Send + Sync>>>(err: E) -> io::Error {
     //     io::Error::new(io::ErrorKind::InvalidData, err)
     // }
 
-    pub fn get(&self, profile: &str) -> Option<&Arc<Config>> {
-        self.inner.get(profile).or(self.default.as_ref())
+    pub fn fallback(&self) -> &Arc<Config> {
+        self.inner.first().unwrap()
     }
 
     pub fn from_reader<R: Read>(reader: R) -> Result<Profiles, Error> {
-        let configs = serde_json::from_reader::<_, HashMap<String, Config>>(reader)?
+        let configs = serde_json::from_reader::<_, BTreeMap<String, Config>>(reader)?
             .into_iter()
             .map(|(profile, mut config)| {
-                let langtags_path = config.langtags_dir.join("langtags.json");
                 // Call read_dir to check the sldr data set path exists and is accessible.
                 let _ = fs::read_dir(&config.sldr_dir)
                     .map_err(|err| Error::with_io_error(&config.sldr_dir, err))?;
+                // Calculate the langtags.json path and load the db.
+                let langtags_path = config.langtags_dir.join("langtags.json");
                 let langtags_file = File::open(&langtags_path)
                     .map_err(|err| Error::with_io_error(langtags_path, err))?;
+                config.name = profile;
                 config.langtags = LangTags::from_reader(BufReader::new(langtags_file))?;
 
-                Ok((profile, config.into()))
+                Ok(config.into())
             })
-            .collect::<Result<ProfilesInner, Error>>()?;
+            .collect::<Result<_, Error>>()?;
 
-        Ok(Profiles {
-            inner: configs,
-            default: None,
-        })
+        Ok(Profiles { inner: configs })
     }
 
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = (&String, &Arc<Config>)> + use<'_> {
+    pub fn iter(&self) -> impl Iterator<Item = &Arc<Config>> {
         self.inner.iter()
     }
 
     #[inline]
-    pub fn names(&self) -> impl Iterator<Item = &str> + use<'_> {
-        self.inner.keys().map(String::as_str)
+    pub fn names(&self) -> impl Iterator<Item = &str> {
+        self.iter().map(|cfg| cfg.name.as_str())
     }
 }
 
@@ -164,7 +159,7 @@ impl Profiles {
 mod test {
     use std::io::Cursor;
 
-    use super::{Config, LangTags, Profiles, ProfilesInner};
+    use super::{Config, LangTags, Profiles};
     use serde_json::json;
 
     #[test]
@@ -193,7 +188,7 @@ mod test {
             .as_bytes(),
         )
         .expect_err("should not parse mock config.json with invalid langtags path");
-        assert!(res.as_io_error().is_some(), "should be io::Error: {res}");
+        assert!(res.as_io_error().is_some(), "should be io::Error: {res:?}");
         assert_eq!(
             res.as_io_error().unwrap().kind(),
             std::io::ErrorKind::NotFound
@@ -219,7 +214,7 @@ mod test {
             .as_bytes(),
         )
         .expect_err("should not parse mock config.json with invalid langtags path");
-        assert!(res.as_io_error().is_some(), "should be io::Error: {res}");
+        assert!(res.as_io_error().is_some(), "should be io::Error: {res:?}");
         assert_eq!(
             res.as_io_error().unwrap().kind(),
             std::io::ErrorKind::NotFound
@@ -231,19 +226,39 @@ mod test {
     }
 
     #[test]
+    fn missing_default() {
+        let res = Profiles::from_reader(
+            json!(
+                {
+                    "production": {
+                        "langtags": "tests/short",
+                        "sldr": "tests"
+                    }
+                }
+            )
+            .to_string()
+            .as_bytes(),
+        )
+        .expect("should parse mock config.json")
+        .set_fallback("dummy")
+        .expect_err("should not find fallback profile \"dummy\"");
+        assert_eq!(res.to_string(), "default profile \"dummy\" not in config")
+    }
+
+    #[test]
     fn valid_langtags() {
         let res = Profiles::from_reader(
             json!(
                 {
-                    "staging": {
-                        "langtags": "tests/short/",
-                        "sldr": "tests"
-                    },
                     "production": {
                         "sendfile_method": "X-Accel-Redirect",
                         "langtags": "tests/short/",
                         "sldr": "tests"
-                    }
+                    },
+                    "staging": {
+                        "langtags": "tests/short/",
+                        "sldr": "tests"
+                    },
                 }
             )
             .to_string()
@@ -418,10 +433,10 @@ mod test {
             }
         ]).to_string();
         let langtags_json = langtags_json.as_bytes();
-        let mut expected = ProfilesInner::new();
-        expected.insert(
-            "production".into(),
+        let mut expected = vec![];
+        expected.push(
             Config {
+                name: "production".into(),
                 sendfile_method: Some("X-Accel-Redirect".into()),
                 langtags: LangTags::from_reader(Cursor::new(langtags_json))
                     .expect("should parse test langtags.json"),
@@ -430,9 +445,9 @@ mod test {
             }
             .into(),
         );
-        expected.insert(
-            "staging".into(),
+        expected.push(
             Config {
+                name: "staging".into(),
                 sendfile_method: None,
                 langtags: LangTags::from_reader(Cursor::new(langtags_json))
                     .expect("should parse test langtags.json"),

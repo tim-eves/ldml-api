@@ -58,7 +58,7 @@ pub fn app(cfg: Profiles) -> io::Result<Router> {
 fn status(profiles: &Profiles) -> impl IntoResponse + Clone {
     use serde_json::{json, Value};
 
-    let profiles = Value::from_iter(profiles.iter().map(|(profile, config)| {
+    let profiles = Value::from_iter(profiles.iter().map(|config| {
         let mut obj = json!({"langtags": {
             "api": config.langtags.api_version(),
             "date": config.langtags.date(),
@@ -69,7 +69,7 @@ fn status(profiles: &Profiles) -> impl IntoResponse + Clone {
                 .unwrap()
                 .insert("sendfile".into(), method.into());
         }
-        (profile, obj)
+        (&config.name, obj)
     }));
     Json(json!({
         "service": env!("CARGO_PKG_NAME"),
@@ -94,9 +94,9 @@ async fn profile_selector(
         .and_then(|qs| {
             profiles
                 .iter()
-                .find_map(|(k, v)| qs.get(k).and_then(|&t| if *t { Some(v) } else { None }))
+                .find(|cfg| qs.get(&cfg.name).is_some_and(|&t| *t))
         })
-        .unwrap_or_else(|| &profiles[""])
+        .unwrap_or_else(|| profiles.fallback())
         .clone();
 
     req.extensions_mut().insert(config);
