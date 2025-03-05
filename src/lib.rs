@@ -1,7 +1,7 @@
 use axum::{
     body::Body,
-    extract::{Extension, Path, Query, Request, State},
-    http::{header::CONTENT_DISPOSITION, HeaderMap, StatusCode},
+    extract::{ConnectInfo, Extension, Path, Query, Request, State},
+    http::{header::CONTENT_DISPOSITION, HeaderMap, HeaderName, StatusCode},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
     routing::get,
@@ -10,9 +10,9 @@ use axum::{
 use axum_extra::headers::{ContentType, ETag, HeaderMapExt};
 use language_tag::Tag;
 use serde::Deserialize;
-use std::{collections::HashMap, io, iter, path, sync::Arc};
+use std::{collections::HashMap, io, iter, net::SocketAddr, path, sync::Arc};
 use tokio::{fs, task};
-use tracing::instrument;
+use tracing::{instrument, Instrument};
 
 pub mod config;
 mod etag;
@@ -99,8 +99,27 @@ async fn profile_selector(
         .unwrap_or_else(|| profiles.fallback())
         .clone();
 
+    let client_ip = req
+        .headers()
+        .get(HeaderName::from_static("x-forwarded-for"))
+        .map(|v| v.to_str().unwrap().to_owned())
+        .or(req
+            .extensions()
+            .get::<ConnectInfo<SocketAddr>>()
+            .map(|ConnectInfo(s)| s.ip().to_string()));
+    let user_agent = req
+        .headers()
+        .get(HeaderName::from_static("user-agent"))
+        .map(|v| v.to_str().unwrap().to_owned());
+    let span = tracing::info_span!(
+        "request",
+        profile = &config.name,
+        client = client_ip,
+        uri = req.uri().to_string(),
+        agent = user_agent
+    );
     req.extensions_mut().insert(config);
-    next.run(req).await
+    next.run(req).instrument(span).await
 }
 
 // struct ServiceError(StatusCode, String);
@@ -133,7 +152,6 @@ async fn stream_file(path: &path::Path) -> Result<impl IntoResponse, Response> {
     stream_file_as(path, attachment).await
 }
 
-#[instrument]
 async fn stream_file_as(
     path: &path::Path,
     filename: &path::Path,
@@ -167,8 +185,9 @@ async fn langtags(
     Path(ext): Path<String>,
     Extension(cfg): Extension<Arc<Config>>,
 ) -> impl IntoResponse {
-    tracing::debug!("langtags.{ext}");
-    stream_file(&cfg.langtags_dir.join("langtags").with_extension(ext)).await
+    let path = cfg.langtags_dir.join("langtags").with_extension(ext);
+    tracing::info!("streaming \"{}\"", path.display());
+    stream_file(&path).await
 }
 
 #[derive(Debug, Deserialize)]
@@ -220,17 +239,6 @@ struct WSParams {
     uid: Option<UniqueID>,
 }
 
-#[instrument(skip(cfg), fields(%ws))]
-async fn writing_system_tags(ws: &Tag, cfg: &Config) -> impl IntoResponse {
-    query_tags(ws, &cfg.langtags).ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            format!("No tagsets found for tag: {ws}"),
-        )
-    })
-}
-
-#[instrument(skip(cfg), fields(%ws))]
 async fn fetch_writing_system_ldml(ws: &Tag, params: WSParams, cfg: &Config) -> impl IntoResponse {
     let ext = params.ext.as_deref().unwrap_or("xml");
     let flatten = *params.flatten.unwrap_or(Toggle::ON);
@@ -248,6 +256,11 @@ async fn fetch_writing_system_ldml(ws: &Tag, params: WSParams, cfg: &Config) -> 
         headers.typed_insert(tag);
     }
     if params.inc.is_none() && params.uid.is_none() {
+        tracing::info!(
+            "streaming {}\"{}\"",
+            if flatten { "flat " } else { "" },
+            path.display()
+        );
         stream_file_as(
             path.as_ref(),
             path.with_extension(ext)
@@ -267,6 +280,13 @@ async fn fetch_writing_system_ldml(ws: &Tag, params: WSParams, cfg: &Config) -> 
         if let Some(etag) = headers.typed_get::<ETag>() {
             headers.typed_insert(etag::weaken(etag))
         }
+        tracing::info!(
+            "customising {}\"{}\" with xpaths=\"{:?}\" and uid=\"{:?}\"",
+            if flatten { "flat " } else { "" },
+            path.display(),
+            params.inc,
+            params.uid
+        );
         ldml_customisation(path.as_ref(), params.inc, params.uid)
             .await
             .map(IntoResponse::into_response)
@@ -274,13 +294,11 @@ async fn fetch_writing_system_ldml(ws: &Tag, params: WSParams, cfg: &Config) -> 
     .map(|resp| (headers, resp))
 }
 
-#[instrument(skip(cfg), fields(%ws))]
 async fn demux_writing_system(
     Path(ws): Path<Tag>,
     Query(params): Query<WSParams>,
     Extension(cfg): Extension<Arc<Config>>,
 ) -> impl IntoResponse {
-    tracing::debug!("language tag {ws}");
     if let Some(query) = params.query {
         match query {
             LDMLQuery::AllTags | LDMLQuery::LangTags => (
@@ -288,7 +306,14 @@ async fn demux_writing_system(
                 "query=alltags, or query=langtags is only valid without a ws_id.",
             )
                 .into_response(),
-            LDMLQuery::Tags => writing_system_tags(&ws, &cfg).await.into_response(),
+            LDMLQuery::Tags => query_tags(&ws, &cfg.langtags)
+                .ok_or_else(|| {
+                    (
+                        StatusCode::NOT_FOUND,
+                        format!("No tagsets found for tag: {ws}"),
+                    )
+                })
+                .into_response(),
         }
     } else {
         fetch_writing_system_ldml(&ws, params, &cfg)
@@ -297,20 +322,19 @@ async fn demux_writing_system(
     }
 }
 
-#[instrument(fields(%ws), skip(langtags))]
 fn query_tags(ws: &Tag, langtags: &LangTags) -> Option<String> {
     use langtags::tagset::render_equivalence_set;
 
     let tagset = langtags.orthographic_normal_form(ws)?;
     let regionsets = tagset.region_sets().map(render_equivalence_set);
     let variantsets = tagset.variant_sets().map(render_equivalence_set);
+    tracing::info!("tagset for \"{ws}\": {tagset}");
     iter::once(tagset.to_string())
         .chain(regionsets)
         .chain(variantsets)
         .reduce(|resp, ref set| resp + "\n" + set)
 }
 
-#[instrument(ret, fields(%ws), skip(langtags))]
 fn find_ldml_file(ws: &Tag, sldr_dir: &path::Path, langtags: &LangTags) -> Option<path::PathBuf> {
     // Lookup the tag set and generate a prefered sorted list.
     let tagset = langtags.orthographic_normal_form(ws)?;
@@ -325,7 +349,6 @@ fn find_ldml_file(ws: &Tag, sldr_dir: &path::Path, langtags: &LangTags) -> Optio
         .rfind(|path| path.exists())
 }
 
-#[instrument]
 async fn ldml_customisation(
     path: &path::Path,
     xpaths: Option<String>,

@@ -64,14 +64,14 @@ async fn main() -> io::Result<()> {
         profiles = profiles.names().collect::<Vec<&str>>().join(", ")
     );
 
-    tracing::debug!("listening on {addr}", addr = args.listen);
+    tracing::info!("listening on {addr}", addr = args.listen);
     let listener = TcpListener::bind(&args.listen).await?;
     axum::serve(
         listener,
         app(profiles)?
             .layer(CompressionLayer::new())
             .layer(TraceLayer::new_for_http())
-            .into_make_service(),
+            .into_make_service_with_connect_info::<SocketAddr>(),
     )
     .with_graceful_shutdown(shutdown_signal())
     .await
