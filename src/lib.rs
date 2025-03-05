@@ -48,9 +48,9 @@ pub fn app(cfg: Profiles) -> io::Result<Router> {
                 .layer(middleware::from_fn(etag::layer))
                 .layer(middleware::from_fn(etag::revid::converter)),
         )
-        .layer(middleware::from_fn_with_state(cfg.into(), profile_selector))
         .route("/", get(query_only))
         .route("/index.html", get(query_only))
+        .layer(middleware::from_fn_with_state(cfg.into(), profile_selector))
         .route("/status", get(move || async { status_response }))
         .fallback(query_only))
 }
@@ -203,11 +203,13 @@ struct QueryParams {
     _ws_id: Option<Tag>,
     query: Option<LDMLQuery>,
     ext: Option<String>,
-    staging: Option<Toggle>,
 }
 
-#[instrument(ret)]
-async fn query_only(Query(params): Query<QueryParams>) -> impl IntoResponse {
+#[instrument(ret, skip_all)]
+async fn query_only(
+    Query(params): Query<QueryParams>,
+    Extension(cfg): Extension<Arc<Config>>,
+) -> impl IntoResponse {
     match params.query {
         Some(LDMLQuery::AllTags) => Err((
             StatusCode::NOT_FOUND,
@@ -215,10 +217,7 @@ async fn query_only(Query(params): Query<QueryParams>) -> impl IntoResponse {
         )),
         Some(LDMLQuery::LangTags) => {
             let ext = params.ext.as_deref().unwrap_or("txt");
-            let mut target = format!("/langtags.{ext}");
-            if *params.staging.unwrap_or_default() {
-                target += "?staging=1";
-            }
+            let target = format!("/langtags.{ext}?{profile}", profile = &cfg.name);
             Ok(Redirect::permanent(&target).into_response())
         }
         Some(LDMLQuery::Tags) => Err((

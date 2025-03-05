@@ -92,7 +92,7 @@ async fn index_page() {
         query_response_staging_location
             .to_str()
             .expect("should get Location HTTP header value"),
-        "/langtags.json?staging=1"
+        "/langtags.json?test"
     );
     const INDEX_BODY: &str = include_str!("../src/index.html");
     let body = axum::body::to_bytes(response.into_body(), INDEX_BODY.len())
