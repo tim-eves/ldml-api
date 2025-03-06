@@ -108,13 +108,7 @@ where {
             .ok()?;
 
         // Search for the revid= attribute.
-        let token = head.find("revid=\"").and_then(|start| {
-            let start = start + "revid=".len();
-            head[start + 1..]
-                .find('"')
-                .map(|end| &head[start..=start + end + 1])
-        })?;
-
+        let token = head.split_once("revid=\"")?.1.split_once('"')?.0;
         token.parse::<ETag>().ok()
     }
 }
