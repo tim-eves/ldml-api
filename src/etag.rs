@@ -11,12 +11,12 @@ pub async fn layer(req: Request, next: Next) -> Response {
     let mut rsp = next.run(req).await;
     let etag = rsp.headers().typed_get::<ETag>();
     if let Some(if_none_match) = header {
-        tracing::info!("Precondition: {if_none_match:?}");
+        tracing::debug!("Precondition: {if_none_match:?}");
         if let Some(etag) = etag {
-            tracing::info!("Response etag: {etag:?}");
+            tracing::debug!("Response etag: {etag:?}");
             if !if_none_match.precondition_passes(&etag) {
                 *rsp.status_mut() = StatusCode::NOT_MODIFIED;
-                tracing::info!("IfNoneMatch precondition fails, ETag matched");
+                tracing::info!("ETag matched, resource not modified");
             }
         }
     }
