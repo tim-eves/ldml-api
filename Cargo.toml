@@ -15,7 +15,7 @@ description = "LDML REST API endpoint."
 keywords = ["ldml", "http", "rest", "web"]
 license = "GPLv3"
 readme = "README.md"
-version = "0.6.1"
+version = "0.6.2"
 authors = ["Tim Eves <tim_eves@sil.org>"]
 edition = "2021"
 

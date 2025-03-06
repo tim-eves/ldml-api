@@ -60,7 +60,8 @@ async fn main() -> io::Result<()> {
             );
         });
     tracing::info!(
-        "loaded profiles: *{profiles}",
+        "version: {version}, loaded profiles: *{profiles}",
+        version = env!("CARGO_PKG_VERSION"),
         profiles = profiles.names().collect::<Vec<&str>>().join(", ")
     );
 
