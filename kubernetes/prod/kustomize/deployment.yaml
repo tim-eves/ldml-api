@@ -36,7 +36,7 @@ spec:
           - '--profile=production'
         env:
           - name: RUST_LOG
-            value: ldml_api=trace,tower_http=trace,axum=trace
+            value: info,tower_http::trace::on_response=trace,axum::rejection=trace
           - name: TOKIO_WORKER_THREADS
             value: '8'
         image: ghcr.io/tim-eves/ldml-api:latest
