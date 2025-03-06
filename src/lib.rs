@@ -99,27 +99,45 @@ async fn profile_selector(
         .unwrap_or_else(|| profiles.fallback())
         .clone();
 
-    let client_ip = req
-        .headers()
-        .get(HeaderName::from_static("x-forwarded-for"))
-        .map(|v| v.to_str().unwrap().to_owned())
-        .or(req
-            .extensions()
-            .get::<ConnectInfo<SocketAddr>>()
-            .map(|ConnectInfo(s)| s.ip().to_string()));
-    let user_agent = req
-        .headers()
-        .get(HeaderName::from_static("user-agent"))
-        .map(|v| v.to_str().unwrap().to_owned());
     let span = tracing::info_span!(
         "request",
-        profile = &config.name,
-        client = client_ip,
+        profile = config.name,
+        client = get_client_addr(&req),
         uri = req.uri().to_string(),
-        agent = user_agent
+        agent = get_user_agent(&req)
     );
     req.extensions_mut().insert(config);
-    next.run(req).instrument(span).await
+    let rsp = next.run(req).instrument(span.clone()).await;
+    tracing::info!(parent: &span, status = %rsp.status());
+    rsp
+}
+
+fn get_client_addr(req: &Request) -> Option<String> {
+    let headers = req.headers();
+    let forwarded_for = headers
+        .get(HeaderName::from_static("x-forwarded-for"))
+        .and_then(|v| v.to_str().ok()?.split(',').next().map(str::to_string));
+    let real_ip = headers
+        .get(HeaderName::from_static("x-real-ip"))
+        .and_then(|v| v.to_str().ok().map(str::to_string));
+    let forwarded = headers
+        .get(HeaderName::from_static("forwarded"))
+        .and_then(|value| {
+            let rest = value.to_str().ok()?.split_once("for=")?.1;
+            rest.split([';', ',']).next().map(str::to_string)
+        });
+    let remote = req
+        .extensions()
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|ConnectInfo(s)| s.ip().to_string());
+    forwarded.or(forwarded_for).or(real_ip).or(remote)
+}
+
+#[inline]
+fn get_user_agent(req: &Request) -> Option<String> {
+    req.headers()
+        .get(HeaderName::from_static("user-agent"))
+        .and_then(|v| v.to_str().ok().map(str::to_string))
 }
 
 // struct ServiceError(StatusCode, String);

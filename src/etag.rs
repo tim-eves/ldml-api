@@ -16,7 +16,7 @@ pub async fn layer(req: Request, next: Next) -> Response {
             tracing::debug!("Response etag: {etag:?}");
             if !if_none_match.precondition_passes(&etag) {
                 *rsp.status_mut() = StatusCode::NOT_MODIFIED;
-                tracing::info!("ETag matched, resource not modified");
+                tracing::info!("ETag matched");
             }
         }
     }
