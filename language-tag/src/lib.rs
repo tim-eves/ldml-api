@@ -87,7 +87,7 @@ impl<'a> Builder<'a> {
             Builder::to_option(self.script),
             Builder::to_option(self.region),
             self.variants,
-            self.extensions.iter().map(|s| s.as_ref()),
+            self.extensions.iter().map(AsRef::<str>::as_ref),
             Builder::to_option(self.private),
         );
         tag.shrink_to_fit();

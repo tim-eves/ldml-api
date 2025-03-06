@@ -32,7 +32,6 @@ fn sanity_check_keyspace() {
             * (1 + ts
                 .variants
                 .iter()
-                .map(|s| s.as_str())
                 .filter(|&v| ts.iter().all(|t| !t.variants().any(|x| x == v)))
                 .count())
         // * (1 + n_globvars)
@@ -176,11 +175,7 @@ fn sanity_check_script() {
             .chain(ts.tags.iter())
             .flat_map(|t| t.script())
             .collect();
-        computed_scripts.remove(
-            ts.script()
-                .as_ref()
-                .expect("Tag should have a script subtag"),
-        );
+        computed_scripts.remove(ts.script().expect("Tag should have a script subtag"));
         assert_eq!(
             computed_scripts.len(),
             0,
@@ -200,7 +195,7 @@ fn sanity_check_regions() {
         let regions: Set<&str> = ts
             .regions
             .iter()
-            .map(|s| s.as_str())
+            .map(AsRef::<str>::as_ref)
             .chain(ts.region())
             .collect();
         let computed_regions: Set<&str> = ts.iter().flat_map(|t| t.region()).collect();
@@ -218,11 +213,11 @@ fn sanity_check_regions() {
 fn sanity_check_variants() {
     for ts in LTDB.tagsets() {
         // Sanity check variants
-        let name = ts.full.to_string();
+        let name = ts.full.as_ref();
         let variants: Set<&str> = ts
             .variants
             .iter()
-            .map(|s| s.as_str())
+            .map(AsRef::<str>::as_ref)
             .chain(ts.full.variants())
             .collect();
 
@@ -233,7 +228,7 @@ fn sanity_check_variants() {
             "Ovelapping variants in tagset {name} between full tag & varaints list: {:?}",
             ts.variants
                 .iter()
-                .map(|s| s.as_str())
+                .map(AsRef::<str>::as_ref)
                 .collect::<Set<&str>>()
                 .intersection(&ts.full.variants().collect())
         );

@@ -304,7 +304,7 @@ async fn fetch_writing_system_ldml(ws: &Tag, params: WSParams, cfg: &Config) -> 
             params.inc,
             params.uid
         );
-        ldml_customisation(path.as_ref(), params.inc, params.uid)
+        ldml_customisation(&path, params.inc, params.uid)
             .await
             .map(IntoResponse::into_response)
     }

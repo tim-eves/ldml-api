@@ -45,8 +45,8 @@ async fn main() -> io::Result<()> {
         .map_err(|err| Error::with_io_error(&args.config, err))
         .and_then(|file| {
             let profiles = config::Profiles::from_reader(file)?;
-            if let Some(default) = args.profile.clone() {
-                profiles.set_fallback(default.as_str())
+            if let Some(default) = args.profile.as_deref() {
+                profiles.set_fallback(default)
             } else {
                 Ok(profiles)
             }
