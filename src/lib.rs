@@ -42,6 +42,7 @@ pub fn app(cfg: Profiles) -> io::Result<Router> {
     let status_response = status(&cfg);
     Ok(Router::new()
         .route("/langtags.{ext}", get(langtags))
+        .layer(middleware::from_fn(etag::layer))
         .route(
             "/{ws_id}",
             get(demux_writing_system)
