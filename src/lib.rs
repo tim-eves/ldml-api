@@ -242,7 +242,7 @@ async fn query_only(
         )),
         Some(LDMLQuery::LangTags) => {
             let ext = params.ext.as_deref().unwrap_or("txt");
-            let target = format!("/langtags.{ext}?{profile}", profile = &cfg.name);
+            let target = format!("/langtags.{ext}?{profile}=1", profile = &cfg.name);
             Ok(Redirect::permanent(&target).into_response())
         }
         Some(LDMLQuery::Tags) => Err((
