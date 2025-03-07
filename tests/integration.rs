@@ -4,6 +4,7 @@ use axum::{
     response::Response,
     Router,
 };
+use axum_extra::headers::{CacheControl, HeaderMapExt};
 use hyper::header::LOCATION;
 use langtags::json::LangTags;
 use language_tag::Tag;
@@ -228,6 +229,12 @@ async fn status_page() {
         }
     })
     .to_string();
+    assert!(response
+        .headers()
+        .typed_get::<CacheControl>()
+        .expect("should have a cache-control header")
+        .no_store());
+
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .expect("should extract Status JSON document");

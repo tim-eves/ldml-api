@@ -1,7 +1,10 @@
 use axum::{
     body::Body,
     extract::{ConnectInfo, Extension, Path, Query, Request, State},
-    http::{header::CONTENT_DISPOSITION, HeaderMap, HeaderName, StatusCode},
+    http::{
+        header::{CACHE_CONTROL, CONTENT_DISPOSITION},
+        HeaderMap, HeaderName, StatusCode,
+    },
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
     routing::get,
@@ -72,11 +75,14 @@ fn status(profiles: &Profiles) -> impl IntoResponse + Clone {
         }
         (&config.name, obj)
     }));
-    Json(json!({
-        "service": env!("CARGO_PKG_NAME"),
-        "version": env!("CARGO_PKG_VERSION"),
-        "profiles": profiles
-    }))
+    (
+        [(CACHE_CONTROL, "no-store")],
+        Json(json!({
+            "service": env!("CARGO_PKG_NAME"),
+            "version": env!("CARGO_PKG_VERSION"),
+            "profiles": profiles
+        })),
+    )
 }
 
 async fn static_help() -> impl IntoResponse {
