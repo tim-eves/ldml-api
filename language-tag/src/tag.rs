@@ -102,34 +102,24 @@ impl Tag {
     pub(crate) fn new(
         full: &str,
         lang: usize,
-        script: impl Into<Option<NonZeroUsize>>,
-        region: impl Into<Option<NonZeroUsize>>,
-        variants: impl IntoIterator<Item = NonZeroUsize>,
-        extensions: impl IntoIterator<Item = NonZeroUsize>,
-        private: impl IntoIterator<Item = NonZeroUsize>,
+        script: Option<NonZeroUsize>,
+        region: Option<NonZeroUsize>,
+        variants: Option<NonZeroUsize>,
+        extensions: Option<NonZeroUsize>
     ) -> Self {
-        if lang == 0 && private.into_iter().next().is_some() {
+        if lang == 0 && !full.is_empty() {
             Tag::privateuse(full)
         } else {
             let mut end = Offsets {
                 lang: lang as u8,
                 ..Offsets::default()
             };
-            end.script = end.lang + script.into().map(|s| s.get() + 1).unwrap_or_default() as u8;
-            end.region = end.script + region.into().map(|s| s.get() + 1).unwrap_or_default() as u8;
-            end.variants = end.region
-                + variants
-                    .into_iter()
-                    .reduce(|a, b| a.saturating_add(b.get()).saturating_add(1))
-                    .map(|s| s.get() + 1)
-                    .unwrap_or_default() as u8;
-            end.extensions = end.variants
-                + extensions
-                    .into_iter()
-                    .reduce(|a, b| a.saturating_add(b.get()).saturating_add(1))
-                    .map(|s| s.get() + 1)
-                    .unwrap_or_default() as u8;
-
+            end.script = end.lang + script.map(|s| s.get() + 1).unwrap_or_default() as u8;
+            end.region = end.script + region.map(|s| s.get() + 1).unwrap_or_default() as u8;
+            end.variants =
+                end.region + variants.map(|s| s.get() + 1).unwrap_or_default() as u8;
+            end.extensions =
+                end.variants + extensions.map(|s| s.get() + 1).unwrap_or_default() as u8;
             Tag {
                 buf: full.into(),
                 end,

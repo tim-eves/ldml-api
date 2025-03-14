@@ -4,7 +4,7 @@ use nom::{
     character::{char, none_of, satisfy},
     combinator::{not, opt, peek, recognize, value, verify},
     error::{context, ContextError, ParseError},
-    multi::{many0, many1_count, many_m_n},
+    multi::{many1_count, many_m_n, separated_list0},
     sequence::{delimited, pair, preceded, terminated},
     IResult, Parser,
 };
@@ -18,8 +18,8 @@ fn dash<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, char, E>
 fn extension_form<'a, E: ParseError<&'a str>>(
     prefix: impl Parser<&'a str, Output = char, Error = E>,
     min: usize,
-) -> impl Parser<&'a str, Output = &'a str, Error = E> {
-    recognize(preceded(prefix, many1_count((dash, alphanums(min, 8)))))
+) -> impl Parser<&'a str, Error = E> {
+    preceded(prefix, many1_count((dash, alphanums(min, 8))))
 }
 
 fn subtag<'a, O, E: ParseError<&'a str>>(
@@ -37,7 +37,7 @@ fn alphanums<'a, E: ParseError<&'a str>>(
 }
 
 fn private<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
-    extension_form(char('x'), 1).parse_complete(input)
+    recognize(extension_form(char('x'), 1)).parse_complete(input)
 }
 
 macro_rules! fixed_parse {
@@ -45,11 +45,21 @@ macro_rules! fixed_parse {
         fixed_parse!($f, $f)
     };
     ($f:literal, $l:literal) => {
-        value(Tag::new($l, $l.len(), None, None, [], [], None), tag($f))
+        value(
+            Tag::new($l, $l.len(), None, None, None, None),
+            tag($f),
+        )
     };
     ($f:literal, $l:literal, $r:literal) => {
         value(
-            Tag::new(concat($l, '-', $r), $l.len(), $r.len(), 0, 0, 0),
+            Tag::new(
+                concat($l, '-', $r),
+                $l.len().try_into().ok(),
+                None,
+                $r.len().try_into().ok(),
+                None,
+                None,
+            ),
             tag($f),
         )
     };
@@ -61,7 +71,6 @@ macro_rules! fixed_parse {
                 None,
                 $r.len().try_into().ok(),
                 $v.len().try_into().ok(),
-                [],
                 None,
             ),
             tag($f),
@@ -83,21 +92,25 @@ where
     let language = recognize(pair(alphanums(2, 3), opt(extlang)));
     let script = subtag(letters(4));
     let region = subtag(alt((letters(2), digits(3))));
-    let variant = subtag(alt((ident, alphanums(5, 8))));
-    let extension = subtag(extension_form(singleton, 2));
+    let variant = alt((ident, alphanums(5, 8)));
+    let variants = subtag(recognize(separated_list0(dash, variant)));
+    let extension = extension_form(singleton, 2);
+    let extensions = subtag(recognize(separated_list0(dash, extension)));
+    let private = subtag(private);
     let terminator = not(peek(satisfy(|c| c == '-' || c.is_ascii_alphanumeric())));
     let (rest, tags) = terminated(
         (
             context("language code", language),
             context("script code", opt(script)),
             context("region code", opt(region)),
-            context("variant subtags", many0(variant)),
-            context("extension subtags", many0(extension)),
-            context("private subtag", opt(subtag(private))),
+            context("variant subtags", opt(variants)),
+            context("extension subtags", opt(extensions)),
+            context("private subtag", opt(private)),
         ),
         terminator,
     )
     .parse_complete(input)?;
+
     Ok((
         rest,
         Tag::new(
@@ -105,9 +118,8 @@ where
             tags.0.len(),
             tags.1.and_then(|r| r.len().try_into().ok()),
             tags.2.and_then(|r| r.len().try_into().ok()),
-            tags.3.into_iter().map(|v| v.len().try_into().unwrap()),
-            tags.4.into_iter().map(|e| e.len().try_into().unwrap()),
-            tags.5.and_then(|r| r.len().try_into().ok()),
+            tags.3.and_then(|r| r.len().try_into().ok()),
+            tags.4.and_then(|r| r.len().try_into().ok())
         ),
     ))
 }
