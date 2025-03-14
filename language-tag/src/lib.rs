@@ -4,6 +4,11 @@ mod from_str;
 pub mod parser;
 pub mod tag;
 
+#[cfg(feature = "compact")]
+use compact_str::CompactString as TagBuffer;
+#[cfg(not(feature = "compact"))]
+use std::string::String as TagBuffer;
+
 pub use crate::{
     from_str::ParseTagError,
     tag::{ExtensionRef, Tag},
@@ -15,7 +20,7 @@ pub struct Builder<'a> {
     script: &'a str,
     region: &'a str,
     variants: Vec<&'a str>,
-    extensions: Vec<String>,
+    extensions: Vec<TagBuffer>,
     private: Vec<&'a str>,
 }
 
@@ -26,9 +31,15 @@ impl<'a> From<&'a Tag> for Builder<'a> {
             script: value.script().unwrap_or_default(),
             region: value.region().unwrap_or_default(),
             variants: value.variants().collect(),
-            extensions: value.extensions().map(|e| e.to_string()).collect(),
+            extensions: value.extensions().map(Into::into).collect(),
             private: value.private().collect(),
         }
+    }
+}
+
+impl From<Builder<'_>> for Tag {
+    fn from(value: Builder) -> Self {
+        value.build()
     }
 }
 
@@ -88,23 +99,25 @@ impl<'a> Builder<'a> {
         self.variants.sort_unstable();
         self.extensions.sort_unstable();
         self.private.sort_unstable();
-        if !self.private.is_empty() {
-            self.private.insert(0, "x");
+
+        let mut tag = Tag::with_lang(self.lang);
+        if !self.script.is_empty() {
+            tag.set_script(self.script);
         }
-        let mut tag = Tag::from_parts(
-            self.lang,
-            Builder::to_option(self.script),
-            Builder::to_option(self.region),
-            self.variants,
-            self.extensions.iter().map(AsRef::<str>::as_ref),
-            self.private,
-        );
+        if !self.region.is_empty() {
+            tag.set_region(self.region);
+        }
+        if !self.variants.is_empty() {
+            tag.set_variants(self.variants);
+        }
+        if !self.extensions.is_empty() {
+            tag.set_extensions(self.extensions);
+        }
+        if !self.private.is_empty() {
+            tag.set_private(self.private);
+        }
+
         tag.shrink_to_fit();
         tag
-    }
-
-    #[inline(always)]
-    fn to_option(s: &str) -> Option<&str> {
-        (!s.is_empty()).then_some(s)
     }
 }

@@ -1,4 +1,4 @@
-use crate::Builder;
+use crate::{Builder, TagBuffer};
 use std::{
     fmt::{Display, Write},
     hash::Hash,
@@ -7,10 +7,6 @@ use std::{
     str::SplitTerminator,
 };
 
-#[cfg(feature = "compact")]
-use compact_str::CompactString as TagBuffer;
-#[cfg(not(feature = "compact"))]
-use std::string::String as TagBuffer;
 #[cfg(feature = "serde")]
 use {serde_with::DeserializeFromStr, serde_with::SerializeDisplay};
 
@@ -110,7 +106,7 @@ impl Tag {
         region: impl Into<Option<NonZeroUsize>>,
         variants: impl IntoIterator<Item = NonZeroUsize>,
         extensions: impl IntoIterator<Item = NonZeroUsize>,
-        private: impl  IntoIterator<Item = NonZeroUsize>,
+        private: impl IntoIterator<Item = NonZeroUsize>,
     ) -> Self {
         if lang == 0 && private.into_iter().next().is_some() {
             Tag::privateuse(full)
@@ -139,54 +135,6 @@ impl Tag {
                 end,
             }
         }
-    }
-
-    pub(crate) fn from_parts<'a>(
-        lang: &'a str,
-        script: impl Into<Option<&'a str>>,
-        region: impl Into<Option<&'a str>>,
-        variants: impl IntoIterator<Item = &'a str, IntoIter = impl Iterator<Item = &'a str> + Clone>,
-        extensions: impl IntoIterator<Item = &'a str, IntoIter = impl Iterator<Item = &'a str> + Clone>,
-        private: impl IntoIterator<Item = &'a str, IntoIter = impl Iterator<Item = &'a str> + Clone>,
-    ) -> Self {
-        let private = private.into_iter();
-        if lang.is_empty() {
-            return Tag::privateuse(Tag::join_subtags(private));
-        }
-        let script = script.into();
-        let region = region.into();
-        let variants = variants.into_iter();
-        let extensions = extensions.into_iter().scan("", |ns, ext| {
-            let parts = ext.split_at(2);
-            if parts.0 == *ns {
-                Some(parts.1)
-            } else {
-                *ns = parts.0;
-                Some(ext)
-            }
-        });
-        let mut full = lang.to_owned();
-        script
-            .iter()
-            .copied()
-            .chain(region.iter().copied())
-            .chain(variants.clone())
-            .chain(extensions.clone())
-            .chain(private.clone())
-            .for_each(|v| {
-                full.push('-');
-                full.push_str(v)
-            });
-
-        Tag::new(
-            &full,
-            lang.len(),
-            script.and_then(|r| r.len().try_into().ok()),
-            region.and_then(|r| r.len().try_into().ok()),
-            variants.map(|v| v.len().try_into().unwrap()),
-            extensions.map(|e| e.len().try_into().unwrap()),
-            private.map(|r| r.len().try_into().unwrap()),
-        )
     }
 
     #[inline]
@@ -695,97 +643,10 @@ impl FusedIterator for Extentions<'_> {}
 mod tests {
     use super::*;
 
-    #[test]
-    fn from_parts() {
-        let tag = Tag::from_parts(
-            "en",
-            "Latn",
-            "US",
-            ["1abc", "2def", "3ghi"],
-            ["a-abcdef", "b-ghijklmn", "c-tester"],
-            ["x-priv"],
-        );
-        assert_eq!(
-            tag,
-            Tag {
-                buf: "en-Latn-US-1abc-2def-3ghi-a-abcdef-b-ghijklmn-c-tester-x-priv".into(),
-                end: Offsets {
-                    lang: 2,
-                    script: 7,
-                    region: 10,
-                    variants: 25,
-                    extensions: 54
-                },
-            }
-        );
-
-        let tag = Tag::from_parts(
-            "en",
-            "Latn",
-            "US",
-            ["1abc", "2def", "3ghi"],
-            ["a-abcdef", "b-ghijklmn", "c-tester"],
-            None,
-        );
-        assert_eq!(
-            tag,
-            Tag {
-                buf: "en-Latn-US-1abc-2def-3ghi-a-abcdef-b-ghijklmn-c-tester".into(),
-                end: Offsets {
-                    lang: 2,
-                    script: 7,
-                    region: 10,
-                    variants: 25,
-                    extensions: 25
-                },
-            }
-        );
-
-        let tag = Tag::from_parts("en", "Latn", "US", ["1abc", "2def", "3ghi"], None, None);
-        assert_eq!(
-            tag,
-            Tag {
-                buf: "en-Latn-US-1abc-2def-3ghi".into(),
-                end: Offsets {
-                    lang: 2,
-                    script: 7,
-                    region: 10,
-                    variants: 10,
-                    extensions: 10
-                },
-            }
-        );
-
-        let tag = Tag::from_parts("en", "Latn", "US", None, None, None);
-        assert_eq!(
-            tag,
-            Tag {
-                buf: "en-Latn-US".into(),
-                end: Offsets {
-                    lang: 2,
-                    script: 7,
-                    region: 7,
-                    variants: 7,
-                    extensions: 7
-                },
-            }
-        );
-
-        let tag = Tag::from_parts("en", None, "US", None, None, None);
-        assert_eq!(
-            tag,
-            Tag {
-                buf: "en-US".into(),
-                end: Offsets {
-                    lang: 2,
-                    script: 2,
-                    region: 5,
-                    variants: 5,
-                    extensions: 5
-                },
-            }
-        );
-    }
+    // TODO: Make sure these test tags are exervised somewhere:
+    // "en-Latn-US-1abc-2def-3ghi-a-abcdef-b-ghijklmn-c-tester-x-priv"
+    // "en-Latn-US-1abc-2def-3ghi-a-abcdef-b-ghijklmn-c-tester"
+    // "en-Latn-US-1abc-2def-3ghi"
 
     #[test]
     fn constructors() {

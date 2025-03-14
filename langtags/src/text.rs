@@ -150,7 +150,7 @@ mod test {
             aa-Arab = aa-Arab-ET"#
                 .as_slice(),
         )
-        .expect("should fail to parse mock langtags.txt");
+        .expect("should not fail to parse mock langtags.txt");
 
         let mut langtags = LangTags::default();
         langtags.tagsets = vec![

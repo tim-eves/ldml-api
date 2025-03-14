@@ -40,37 +40,32 @@ fn private<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a s
     extension_form(char('x'), 1).parse_complete(input)
 }
 
-fn fixed_parse<'a, E: ParseError<&'a str>>(
-    name: &'static str,
-    lang: impl Into<Option<&'static str>>,
-    region: impl Into<Option<&'static str>>,
-    variant: impl Into<Option<&'static str>>,
-) -> impl Parser<&'a str, Output = Tag, Error = E> {
-    value(
-        Tag::from_parts(
-            lang.into().unwrap_or(name),
-            None,
-            region.into(),
-            variant.into(),
-            None,
-            None,
-        ),
-        tag(name),
-    )
-}
-
 macro_rules! fixed_parse {
     ($f:literal) => {
-        fixed_parse($f, None, None, None)
+        fixed_parse!($f, $f)
     };
     ($f:literal, $l:literal) => {
-        fixed_parse($f, $l, None, None)
+        value(Tag::new($l, $l.len(), None, None, [], [], None), tag($f))
     };
     ($f:literal, $l:literal, $r:literal) => {
-        fixed_parse($f, $l, $r, None)
+        value(
+            Tag::new(concat($l, '-', $r), $l.len(), $r.len(), 0, 0, 0),
+            tag($f),
+        )
     };
-    ($f:literal, $l:literal, $r:tt, $v:literal) => {
-        fixed_parse($f, $l, $r, $v)
+    ($f:literal, $l:literal, $r:literal, $v:literal) => {
+        value(
+            Tag::new(
+                concat!($l, '-', $r, '-', $v),
+                $l.len(),
+                None,
+                $r.len().try_into().ok(),
+                $v.len().try_into().ok(),
+                [],
+                None,
+            ),
+            tag($f),
+        )
     };
 }
 
@@ -91,7 +86,7 @@ where
     let variant = subtag(alt((ident, alphanums(5, 8))));
     let extension = subtag(extension_form(singleton, 2));
     let terminator = not(peek(satisfy(|c| c == '-' || c.is_ascii_alphanumeric())));
-    let (rest, mut tags) = terminated(
+    let (rest, tags) = terminated(
         (
             context("language code", language),
             context("script code", opt(script)),
@@ -103,8 +98,6 @@ where
         terminator,
     )
     .parse_complete(input)?;
-    tags.3.sort_unstable();
-    tags.4.sort_unstable();
     Ok((
         rest,
         Tag::new(
@@ -201,7 +194,11 @@ mod tests {
             ("cel-gaulish", Tag::with_lang("cel-gaulish")),
             (
                 "en-GB-oed",
-                Tag::from_parts("en", None, "GB", ["oxendict"], [], None),
+                Tag::builder()
+                    .lang("en")
+                    .region("GB")
+                    .variant("oxendict")
+                    .into(),
             ),
             ("i-ami", Tag::with_lang("ami")),
             ("i-bnn", Tag::with_lang("bnn")),
