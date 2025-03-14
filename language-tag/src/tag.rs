@@ -1,5 +1,4 @@
 use crate::Builder;
-use core::panic;
 use std::{
     fmt::{Display, Write},
     hash::Hash,
@@ -91,6 +90,19 @@ macro_rules! component_range {
 }
 
 impl Tag {
+    fn join_subtags(subtags: impl IntoIterator<Item = impl AsRef<str>>) -> String {
+        let mut subtags = subtags.into_iter();
+        let mut buffer: String = subtags
+            .next()
+            .map(|s| s.as_ref().into())
+            .unwrap_or_default();
+        for subtag in subtags {
+            buffer.push('-');
+            buffer.push_str(subtag.as_ref());
+        }
+        buffer
+    }
+
     pub(crate) fn new(
         full: &str,
         lang: usize,
@@ -98,9 +110,9 @@ impl Tag {
         region: impl Into<Option<NonZeroUsize>>,
         variants: impl IntoIterator<Item = NonZeroUsize>,
         extensions: impl IntoIterator<Item = NonZeroUsize>,
-        private: impl Into<Option<NonZeroUsize>>,
+        private: impl  IntoIterator<Item = NonZeroUsize>,
     ) -> Self {
-        if lang == 0 && private.into().is_some() {
+        if lang == 0 && private.into_iter().next().is_some() {
             Tag::privateuse(full)
         } else {
             let mut end = Offsets {
@@ -135,13 +147,11 @@ impl Tag {
         region: impl Into<Option<&'a str>>,
         variants: impl IntoIterator<Item = &'a str, IntoIter = impl Iterator<Item = &'a str> + Clone>,
         extensions: impl IntoIterator<Item = &'a str, IntoIter = impl Iterator<Item = &'a str> + Clone>,
-        private: impl Into<Option<&'a str>>,
+        private: impl IntoIterator<Item = &'a str, IntoIter = impl Iterator<Item = &'a str> + Clone>,
     ) -> Self {
-        let private = private.into();
+        let private = private.into_iter();
         if lang.is_empty() {
-            if let Some(private) = private {
-                return Tag::privateuse(private);
-            }
+            return Tag::privateuse(Tag::join_subtags(private));
         }
         let script = script.into();
         let region = region.into();
@@ -162,7 +172,7 @@ impl Tag {
             .chain(region.iter().copied())
             .chain(variants.clone())
             .chain(extensions.clone())
-            .chain(private.iter().copied())
+            .chain(private.clone())
             .for_each(|v| {
                 full.push('-');
                 full.push_str(v)
@@ -175,7 +185,7 @@ impl Tag {
             region.and_then(|r| r.len().try_into().ok()),
             variants.map(|v| v.len().try_into().unwrap()),
             extensions.map(|e| e.len().try_into().unwrap()),
-            private.and_then(|r| r.len().try_into().ok()),
+            private.map(|r| r.len().try_into().unwrap()),
         )
     }
 
@@ -212,80 +222,111 @@ impl Tag {
         self.buf.shrink_to_fit();
     }
 
-    pub fn set_lang(&mut self, lang: &str) {
+    pub fn set_lang(&mut self, lang: impl AsRef<str>) {
         let old = self.buf.len() as isize;
-        self.buf.replace_range(..self.end.lang as usize, lang);
+        self.buf
+            .replace_range(..self.end.lang as usize, lang.as_ref());
         self.end.adjust_lang(self.buf.len() as isize - old);
     }
 
-    pub fn set_script(&mut self, script: &str) {
+    #[inline]
+    pub fn clear_lang(&mut self) {
+        self.set_lang("");
+    }
+
+    pub fn set_script(&mut self, script: impl AsRef<str>) {
+        let script = script.as_ref();
         let old = self.buf.len() as isize;
         let range = component_range!(self, script);
         self.buf.replace_range(range, script);
         self.end.adjust_script(self.buf.len() as isize - old);
     }
 
-    pub fn set_region(&mut self, region: &str) {
+    #[inline]
+    pub fn clear_script(&mut self) {
+        self.set_script("");
+    }
+
+    pub fn set_region(&mut self, region: impl AsRef<str>) {
+        let region = region.as_ref();
         let old = self.buf.len() as isize;
         let range = component_range!(self, region);
         self.buf.replace_range(range, region);
         self.end.adjust_region(self.buf.len() as isize - old);
     }
 
-    pub fn set_variants<'a>(&mut self, variants: impl AsRef<[&'a str]>) {
-        let variants = variants.as_ref();
-        let variants = variants.join("-");
+    #[inline]
+    pub fn clear_region(&mut self) {
+        self.set_region("");
+    }
+
+    pub fn set_variants(&mut self, variants: impl IntoIterator<Item = impl AsRef<str>>) {
+        let variants = Tag::join_subtags(variants);
         let old = self.buf.len() as isize;
         let range = component_range!(self, variants);
         self.buf.replace_range(range, &variants);
         self.end.adjust_variants(self.buf.len() as isize - old);
     }
 
-    #[inline(always)]
-    #[track_caller]
-    fn assert_extension(subtag: &str) {
-        if subtag.len() <= 4 || subtag.as_bytes()[1] != b'-' {
-            panic!("subtag \"{subtag}\" is not a valid extension");
+    #[inline]
+    pub fn clear_variants(&mut self) {
+        self.set_variants([] as [&str; 0]);
+    }
+
+    fn build_extensions(mut extensions: impl Iterator<Item = impl AsRef<str>>) -> TagBuffer {
+        let mut buf: TagBuffer = extensions
+            .next()
+            .map(|s| s.as_ref().into())
+            .unwrap_or_default();
+        let mut ns = buf.chars().next().unwrap_or_default();
+        for ext in extensions {
+            let ext = ext.as_ref();
+            let er = ExtensionRef::try_from(ext).expect("should be an extension");
+            buf.push('-');
+            buf.push_str(if ns == er.namespace {
+                er.name
+            } else {
+                ns = er.namespace;
+                ext
+            });
         }
-        // todo!("Remove hard panic on potential user supplied input.");
+        buf
     }
 
     #[track_caller]
-    pub fn set_extensions<'a>(&mut self, extensions: impl AsRef<[&'a str]>) {
-        let mut extensions = extensions.as_ref().to_vec();
-        let extensions = if extensions.is_empty() {
-            Default::default()
-        } else {
-            extensions.sort_unstable();
-            let mut ns = "\0";
-            for e in extensions.iter_mut() {
-                Tag::assert_extension(e);
-                let parts = e.split_at(2);
-                if parts.0 == ns {
-                    *e = parts.1;
-                } else {
-                    ns = parts.0;
-                }
-            }
-            extensions.join("-")
-        };
-
+    pub fn set_extensions(&mut self, extensions: impl IntoIterator<Item = impl AsRef<str>>) {
+        let extensions = Self::build_extensions(extensions.into_iter());
         let old = self.buf.len() as isize;
         let range = component_range!(self, extensions);
         self.buf.replace_range(range, &extensions);
         self.end.adjust_extensions(self.buf.len() as isize - old);
     }
 
-    pub fn set_private(&mut self, private: &str) {
+    #[inline]
+    pub fn clear_extensions(&mut self) {
+        self.set_extensions([] as [&str; 0]);
+    }
+
+    pub fn set_private(&mut self, private: impl IntoIterator<Item = impl AsRef<str>>) {
+        let mut private = Tag::join_subtags(private);
         let range = component_range!(self, private);
-        self.buf.replace_range(range, private);
+        if !private.is_empty() {
+            private.insert_str(0, "x-");
+        }
+        self.buf.replace_range(range, &private);
+    }
+
+    #[inline]
+    pub fn clear_private(&mut self) {
+        self.set_private([] as [&str; 0]);
     }
 
     #[track_caller]
-    pub fn push_variant(&mut self, variant: &str) {
+    pub fn push_variant(&mut self, variant: impl AsRef<str>) {
         let old = self.buf.len() as isize;
         self.buf.insert(self.end.variants as usize, '-');
-        self.buf.insert_str(self.end.variants as usize + 1, variant);
+        self.buf
+            .insert_str(self.end.variants as usize + 1, variant.as_ref());
         self.end.adjust_variants(self.buf.len() as isize - old);
     }
 
@@ -303,7 +344,6 @@ impl Tag {
         &'c self,
         extension: &'e str,
     ) -> Result<(usize, &'e str), (usize, &'e str)> {
-        Tag::assert_extension(extension);
         let parts = extension.split_at(2);
         let range = _component_range!(self, extensions);
         let elided_extensions = &self.buf[range.clone()];
@@ -351,12 +391,12 @@ impl Tag {
     }
 
     #[inline]
-    pub fn has_extension(&self, extension: &str) -> bool {
-        self.find_extension(extension).is_ok()
+    pub fn has_extension(&self, extension: impl AsRef<str>) -> bool {
+        self.find_extension(extension.as_ref()).is_ok()
     }
 
-    pub fn add_extension(&mut self, extension: &str) {
-        if let Err((pos, extension)) = self.find_extension(extension) {
+    pub fn add_extension(&mut self, extension: impl AsRef<str>) {
+        if let Err((pos, extension)) = self.find_extension(extension.as_ref()) {
             let old = self.buf.len() as isize;
             self.buf.insert(pos, '-');
             self.buf.insert_str(pos + 1, extension);
@@ -364,8 +404,8 @@ impl Tag {
         }
     }
 
-    pub fn remove_extension(&mut self, extension: &str) -> bool {
-        if let Ok((start, extension)) = self.find_extension(extension) {
+    pub fn remove_extension(&mut self, extension: impl AsRef<str>) -> bool {
+        if let Ok((start, extension)) = self.find_extension(extension.as_ref()) {
             let old = self.buf.len() as isize;
             self.buf
                 .replace_range(start - 1..start + extension.len(), "");
@@ -374,6 +414,16 @@ impl Tag {
         } else {
             false
         }
+    }
+
+    #[inline]
+    pub fn add_private(&mut self, private: impl AsRef<str>) {
+        self.add_extension("x-".to_owned() + private.as_ref());
+    }
+
+    #[inline]
+    pub fn remove_private(&mut self, private: impl AsRef<str>) -> bool {
+        self.remove_extension("x-".to_owned() + private.as_ref())
     }
 
     #[inline(always)]
@@ -402,12 +452,12 @@ impl Tag {
     }
 
     #[inline]
-    pub fn variants(&self) -> Variants {
+    pub fn variants(&self) -> Subtags {
         let mut range = self.end.region as usize..self.end.variants as usize;
         if !range.is_empty() {
             range.start += 1;
         }
-        Variants::new(&self.buf[range])
+        Subtags::new(&self.buf[range])
     }
 
     #[inline]
@@ -420,13 +470,12 @@ impl Tag {
     }
 
     #[inline]
-    pub fn private(&self) -> Option<&str> {
-        let s = &self.buf[self.end.extensions as usize..];
-        if s.is_empty() {
-            None
-        } else {
-            Some(&s[1..])
+    pub fn private(&self) -> Subtags {
+        let mut range = self.end.extensions as usize..self.buf.len();
+        if !range.is_empty() {
+            range.start += 3;
         }
+        Subtags::new(&self.buf[range])
     }
 
     #[inline(always)]
@@ -501,18 +550,18 @@ impl PartialOrd for Tag {
     }
 }
 
-// Variants iterator
+// Subtags iterator
 #[derive(Clone, Debug)]
-pub struct Variants<'c>(SplitTerminator<'c, char>);
+pub struct Subtags<'c>(SplitTerminator<'c, char>);
 
-impl<'c> Variants<'c> {
+impl<'c> Subtags<'c> {
     #[inline]
     fn new<'a: 'c>(subtags: &'a str) -> Self {
-        Variants(subtags.split_terminator('-'))
+        Subtags(subtags.split_terminator('-'))
     }
 }
 
-impl<'c> Iterator for Variants<'c> {
+impl<'c> Iterator for Subtags<'c> {
     type Item = &'c str;
 
     #[inline(always)]
@@ -521,9 +570,9 @@ impl<'c> Iterator for Variants<'c> {
     }
 }
 
-impl FusedIterator for Variants<'_> {}
+impl FusedIterator for Subtags<'_> {}
 
-impl DoubleEndedIterator for Variants<'_> {
+impl DoubleEndedIterator for Subtags<'_> {
     #[inline(always)]
     fn next_back(&mut self) -> Option<Self::Item> {
         self.0.next_back()
@@ -559,6 +608,16 @@ impl Display for ParseExtensionError {
             ParseExtensionError::NameToLong => "name value must be 2-8 ascii characters long",
         }
         .fmt(f)
+    }
+}
+
+impl From<ExtensionRef<'_>> for TagBuffer {
+    fn from(value: ExtensionRef<'_>) -> Self {
+        let mut buf = TagBuffer::default();
+        buf.push(value.namespace);
+        buf.push('-');
+        buf.push_str(value.name);
+        buf
     }
 }
 
@@ -644,7 +703,7 @@ mod tests {
             "US",
             ["1abc", "2def", "3ghi"],
             ["a-abcdef", "b-ghijklmn", "c-tester"],
-            "x-priv",
+            ["x-priv"],
         );
         assert_eq!(
             tag,

@@ -26,7 +26,7 @@ fn parser() {
         ("de", Ok(Tag::with_lang("de"))),
         (
             "en-x-priv2",
-            Ok(Tag::builder().lang("en").private("x-priv2").build()),
+            Ok(Tag::builder().lang("en").private("priv2").build()),
         ),
         ("en-us", Ok(Tag::builder().lang("en").region("us").build())),
         (
@@ -48,7 +48,7 @@ fn parser() {
                 .script("Latn")
                 .region("US")
                 .variants(["2abc", "3cde", "a2c3e", "xwhat"])
-                .private("x-priv2")
+                .private("priv2")
                 .build()),
         ),
         (
@@ -61,7 +61,7 @@ fn parser() {
                 .extension("a-bable")
                 .extension("a-test")
                 .extension("q-babbel")
-                .private("x-priv1")
+                .private("priv1")
                 .build()),
         ),
         (
@@ -110,7 +110,7 @@ fn display() {
     tag.push_variant("2abc");
     tag.push_variant("what2");
     tag.set_extensions(["a-bable", "q-babbel"]);
-    tag.set_private("x-priv1");
+    tag.set_private(["priv1"]);
     println!("{tag:?} failed as {tag}");
     assert_eq!(
         tag.to_string(),
@@ -145,10 +145,7 @@ fn getters() {
         "Latn"
     );
     assert_eq!(tag.region().expect("Tag should have a region subtag"), "US");
-    assert_eq!(
-        tag.private().expect("Tag should have a private extension"),
-        "x-priv"
-    );
+    assert_eq!(tag.private().collect::<Vec<_>>(), vec!["priv"]);
     assert_eq!(tag.variants().collect::<Vec<_>>(), ["1abc", "2def", "3ghi"]);
     assert_eq!(
         tag.extensions().collect::<Vec<_>>(),
@@ -159,7 +156,7 @@ fn getters() {
     assert_eq!(tag.lang(), "");
     assert_eq!(tag.script(), None);
     assert_eq!(tag.region(), None);
-    assert_eq!(tag.private(), None);
+    assert_eq!(tag.private().collect::<Vec<_>>(), Vec::<&str>::new());
     assert_eq!(tag.variants().collect::<Vec<_>>(), Vec::<&str>::new());
     assert_eq!(
         tag.extensions().collect::<Vec<_>>(),
@@ -191,7 +188,7 @@ fn setters() {
     tag.add_extension("a-var1");
     assert_eq!(tag, Tag::from_str("en-a-var1").unwrap());
     let mut tag = Tag::with_lang("en");
-    tag.set_private("x-priv");
+    tag.set_private(["priv"]);
     assert_eq!(tag, Tag::from_str("en-x-priv").unwrap());
 
     // Test cumlatively
@@ -214,7 +211,7 @@ fn setters() {
         tag,
         Tag::from_str("en-Latn-US-1abc-2def-3ghi-a-abcdef-b-ghijklmn-c-tester").unwrap()
     );
-    tag.set_private("x-priv");
+    tag.set_private(["priv"]);
     assert_eq!(
         tag,
         Tag::from_str("en-Latn-US-1abc-2def-3ghi-a-abcdef-b-ghijklmn-c-tester-x-priv").unwrap()
@@ -266,18 +263,18 @@ fn setters() {
     assert!(tag.remove_extension("b-opqrstuv"));
     assert_eq!(tag, Tag::from_str("en-US-1abc-2def-x-priv").unwrap());
     let mut tag = Tag::from_str("en-Latn-US-1abc-a-abcdef-x-priv").unwrap();
-    tag.set_private("");
-    tag.set_extensions([]);
-    tag.set_variants([]);
-    tag.set_region("");
-    tag.set_script("");
+    tag.clear_private();
+    tag.clear_extensions();
+    tag.clear_variants();
+    tag.clear_region();
+    tag.clear_script();
     assert_eq!(tag, Tag::with_lang("en"));
 
-    tag.set_private("");
-    tag.set_extensions([]);
-    tag.set_variants([]);
-    tag.set_region("");
-    tag.set_script("");
+    tag.clear_private();
+    tag.clear_extensions();
+    tag.clear_variants();
+    tag.clear_region();
+    tag.clear_script();
     assert_eq!(tag, Tag::with_lang("en"));
 }
 

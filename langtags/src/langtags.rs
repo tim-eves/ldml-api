@@ -79,27 +79,28 @@ impl LangTags {
             .full
             .get(key.as_ref())
             .or_else(|| {
-                key.set_private("");
+                key.clear_private();
                 self.full.get(key.as_ref())
             })
             .or_else(|| {
-                key.set_extensions([]);
+                key.clear_extensions();
                 self.full.get(key.as_ref())
             })
             .or_else(|| {
-                key.set_variants([]);
+                key.clear_variants();
                 self.full.get(key.as_ref())
             })
             .or_else(|| {
-                key.set_region("");
+                key.clear_region();
                 self.full.get(key.as_ref())
             });
         let idx = *idx? as usize;
         let ts = self.tagsets.get(idx)?;
 
-        let private_is_valid = ts.full.private().map_or(true, |ts_priv| {
-            tag.private().is_some_and(|tag_priv| tag_priv == ts_priv)
-        });
+        let private_is_valid = ts
+            .full
+            .private()
+            .all(|ts_priv| tag.private().any(|tag_priv| tag_priv == ts_priv));
         if key == *tag
             || private_is_valid
                 && LangTags::valid_extensions(ts, tag.extensions())

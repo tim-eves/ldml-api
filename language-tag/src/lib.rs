@@ -16,7 +16,7 @@ pub struct Builder<'a> {
     region: &'a str,
     variants: Vec<&'a str>,
     extensions: Vec<String>,
-    private: &'a str,
+    private: Vec<&'a str>,
 }
 
 impl<'a> From<&'a Tag> for Builder<'a> {
@@ -27,7 +27,7 @@ impl<'a> From<&'a Tag> for Builder<'a> {
             region: value.region().unwrap_or_default(),
             variants: value.variants().collect(),
             extensions: value.extensions().map(|e| e.to_string()).collect(),
-            private: value.private().unwrap_or_default(),
+            private: value.private().collect(),
         }
     }
 }
@@ -53,7 +53,7 @@ impl<'a> Builder<'a> {
 
     #[inline]
     pub fn private(mut self, private: &'a str) -> Self {
-        self.private = private;
+        self.private.push(private);
         self
     }
 
@@ -65,30 +65,39 @@ impl<'a> Builder<'a> {
 
     #[inline]
     pub fn extension(mut self, extension: &'a str) -> Self {
-        self.extensions.push(extension.to_owned());
+        self.extensions.push(extension.to_owned().into());
         self
     }
 
-    pub fn variants<C: AsRef<[&'a str]>>(mut self, c: C) -> Self {
-        self.variants = c.as_ref().to_owned();
+    pub fn variants<C: IntoIterator<Item = &'a str>>(mut self, c: C) -> Self {
+        self.variants.extend(c);
         self
     }
 
-    pub fn extensions<C: IntoIterator<Item = impl AsRef<str>>>(mut self, c: C) -> Self {
-        self.extensions = c.into_iter().map(|e| e.as_ref().into()).collect();
+    pub fn extensions<C: IntoIterator<Item = &'a str>>(mut self, c: C) -> Self {
+        self.extensions.extend(c.into_iter().map(Into::into));
+        self
+    }
+
+    pub fn private_names<C: IntoIterator<Item = &'a str>>(mut self, c: C) -> Self {
+        self.private.extend(c);
         self
     }
 
     pub fn build(mut self) -> Tag {
         self.variants.sort_unstable();
         self.extensions.sort_unstable();
+        self.private.sort_unstable();
+        if !self.private.is_empty() {
+            self.private.insert(0, "x");
+        }
         let mut tag = Tag::from_parts(
             self.lang,
             Builder::to_option(self.script),
             Builder::to_option(self.region),
             self.variants,
             self.extensions.iter().map(AsRef::<str>::as_ref),
-            Builder::to_option(self.private),
+            self.private,
         );
         tag.shrink_to_fit();
         tag
