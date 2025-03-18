@@ -25,7 +25,7 @@ fn extension_form<'a, E: ParseError<&'a str>>(
 fn subtag<'a, O, E: ParseError<&'a str>>(
     parser: impl Parser<&'a str, Output = O, Error = E>,
 ) -> impl Parser<&'a str, Output = O, Error = E> {
-    let eot = not(peek(satisfy(|c| c.is_ascii_alphanumeric())));
+    let eot = not(peek(satisfy(AsChar::is_alphanum)));
     delimited(dash, parser, eot)
 }
 
@@ -45,10 +45,7 @@ macro_rules! fixed_parse {
         fixed_parse!($f, $f)
     };
     ($f:literal, $l:literal) => {
-        value(
-            Tag::new($l, $l.len(), None, None, None, None),
-            tag($f),
-        )
+        value(Tag::new($l, $l.len(), None, None, None, None), tag($f))
     };
     ($f:literal, $l:literal, $r:literal) => {
         value(
@@ -119,7 +116,7 @@ where
             tags.1.and_then(|r| r.len().try_into().ok()),
             tags.2.and_then(|r| r.len().try_into().ok()),
             tags.3.and_then(|r| r.len().try_into().ok()),
-            tags.4.and_then(|r| r.len().try_into().ok())
+            tags.4.and_then(|r| r.len().try_into().ok()),
         ),
     ))
 }

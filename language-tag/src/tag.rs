@@ -105,7 +105,7 @@ impl Tag {
         script: Option<NonZeroUsize>,
         region: Option<NonZeroUsize>,
         variants: Option<NonZeroUsize>,
-        extensions: Option<NonZeroUsize>
+        extensions: Option<NonZeroUsize>,
     ) -> Self {
         if lang == 0 && !full.is_empty() {
             Tag::privateuse(full)
@@ -116,8 +116,7 @@ impl Tag {
             };
             end.script = end.lang + script.map(|s| s.get() + 1).unwrap_or_default() as u8;
             end.region = end.script + region.map(|s| s.get() + 1).unwrap_or_default() as u8;
-            end.variants =
-                end.region + variants.map(|s| s.get() + 1).unwrap_or_default() as u8;
+            end.variants = end.region + variants.map(|s| s.get() + 1).unwrap_or_default() as u8;
             end.extensions =
                 end.variants + extensions.map(|s| s.get() + 1).unwrap_or_default() as u8;
             Tag {

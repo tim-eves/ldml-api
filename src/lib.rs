@@ -363,11 +363,12 @@ fn find_ldml_file(ws: &Tag, sldr_dir: &path::Path, langtags: &LangTags) -> Optio
     // Lookup the tag set and generate a prefered sorted list.
     let tagset = langtags.orthographic_normal_form(ws)?;
     let tags: Vec<_> = tagset.iter().collect();
-    let path = sldr_dir.join(&tagset.lang()[0..1]);
 
     tags.iter()
         .map(|&tag| {
-            path.join(tag.as_ref().replace('-', "_"))
+            sldr_dir
+                .join(&tag.lang()[0..1])
+                .join(tag.as_ref().replace('-', "_"))
                 .with_extension("xml")
         })
         .rfind(|path| path.exists())
