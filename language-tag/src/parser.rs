@@ -1,12 +1,12 @@
 use nom::{
     branch::alt,
     bytes::{tag, take_while_m_n},
-    character::{char, none_of, satisfy},
+    character::complete::{char, none_of, satisfy},
     combinator::{not, opt, peek, recognize, value, verify},
     error::{context, ContextError, ParseError},
     multi::{many1_count, many_m_n, separated_list0},
     sequence::{delimited, pair, preceded, terminated},
-    IResult, Parser,
+    AsChar, IResult, Parser,
 };
 
 use crate::Tag;
