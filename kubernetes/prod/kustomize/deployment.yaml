@@ -106,17 +106,19 @@ spec:
         workingDir: /mnt/
         env:
         - name: STAGING_URL
-          value: https://github.com/silnrsi/langtags/releases/download/staging/langtags.json
+          value: https://github.com/silnrsi/langtags/releases/download/staging/langtags
         - name: PRODUCTION_URL
-          value: https://github.com/silnrsi/langtags/releases/latest/download/langtags.json
+          value: https://github.com/silnrsi/langtags/releases/latest/download/langtags
         command: [ '/bin/sh', '-ec' ]
         args:
         - >-
           mkdir -p langtags/staging; mkdir -p langtags/production; cd langtags; 
-          curl --silent --location --etag-save staging/etag --etag-compare staging/etag ${STAGING_URL}
-          --output staging/langtags.json;
-          curl --silent --location --etag-save production/etag --etag-compare production/etag ${PRODUCTION_URL}
-          --output production/langtags.json;
+          curl --silent --location --etag-save staging/etag --etag-compare staging/etag
+          ${STAGING_URL}.json --output staging/langtags.json;
+          curl --silent --location --etag-save production/etag --etag-compare production/etag
+          ${PRODUCTION_URL}.json --output production/langtags.json;
+          curl --silent --location ${STAGING_URL}.txt --output staging/langtags.txt;
+          curl --silent --location ${PRODUCTION_URL}.txt --output production/langtags.txt;
         resources:
           requests: &guarenteed
             memory: 64Mi
