@@ -5,7 +5,7 @@ members = [
 ]
 
 [workspace.dependencies]
-language-tag = { version = "0", path = "./language-tag", features = ["serde", "compact"] }
+language-tag = { version = "0", path = "./language-tag", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
@@ -19,6 +19,11 @@ version = "0.8.1"
 authors = ["Tim Eves <tim_eves@sil.org>"]
 edition = "2021"
 
+[features]
+default = ["compact"]
+compact = ["language-tag/compact", "langtags/compact"]
+
+
 [dev-dependencies]
 hyper = { version = "1.0" }
 tower = { version = "0.5", features = ["util"]}
@@ -27,7 +32,7 @@ tower = { version = "0.5", features = ["util"]}
 axum = { version = "0.8", features = ["http2"]}
 axum-extra = { version = "0.10", features = ["typed-header"]}
 clap = { version = "4.5", features = ["derive"] }
-langtags = { version = "0", path = "./langtags", features = ["compact"] }
+langtags = { version = "0", path = "./langtags" }
 language-tag = { workspace = true }
 libxml = { version = "0.3"}
 mime_guess = "2.0"

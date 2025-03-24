@@ -1,11 +1,7 @@
+use crate::StringRepr;
 use language_tag::Tag;
 use serde::Deserialize;
 use std::{borrow::Borrow, fmt::Display, iter::once, ops::Deref};
-
-#[cfg(feature = "compact")]
-use compact_str::CompactString as StringRepr;
-#[cfg(not(feature = "compact"))]
-use std::string::String as StringRepr;
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
 // #[serde(default)]
@@ -69,7 +65,7 @@ where
 }
 
 impl TagSet {
-    pub fn all_tags(&self) -> impl Iter<Item = Tag> + '_ {
+    pub fn all_tags(&self) -> impl Iter<Item = Tag> + use<'_> {
         self.iter()
             .cloned()
             .chain(self.region_sets().flatten())
