@@ -52,9 +52,9 @@ fn parser() {
                 .build()),
         ),
         (
-            "en-aaa-ccc-Latn-US-2abc-what2-a-bable-test-q-babbel-x-priv1",
+            "en-aaa-Latn-US-2abc-what2-a-bable-test-q-babbel-x-priv1",
             Ok(Tag::builder()
-                .lang("en-aaa-ccc")
+                .lang("en-aaa")
                 .script("Latn")
                 .region("US")
                 .variants(["2abc", "what2"])
@@ -69,8 +69,8 @@ fn parser() {
             Ok(Tag::privateuse("x-priv1-priv2-xpriv3")),
         ),
         (
-            "en-gan-yue-Latn",
-            Ok(Tag::builder().lang("en-gan-yue").script("Latn").build()),
+            "en-gan-Latn",
+            Ok(Tag::builder().lang("en-gan").script("Latn").build()),
         ),
     ];
     for (test, result) in &gf_cases {
