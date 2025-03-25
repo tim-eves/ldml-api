@@ -11,7 +11,7 @@ use std::string::String as TagBuffer;
 
 pub use crate::{
     from_str::ParseTagError,
-    tag::{ExtensionRef, Tag},
+    tag::{Extension, Tag},
 };
 
 #[derive(Default, Debug)]
@@ -69,27 +69,34 @@ impl<'a> Builder<'a> {
     }
 
     #[inline]
-    pub fn variant(mut self, variant: &'a str) -> Self {
-        self.variants.push(variant);
-        self
+    pub fn variant(self, variant: &'a str) -> Self {
+        self.variants(Some(variant))
+    }
+
+    #[track_caller]
+    #[inline]
+    pub fn extension(self, extension: &'a str) -> Self {
+        self.extensions(Some(extension))
     }
 
     #[inline]
-    pub fn extension(mut self, extension: &'a str) -> Self {
-        self.extensions.push(extension.to_owned().into());
-        self
-    }
-
     pub fn variants<C: IntoIterator<Item = &'a str>>(mut self, c: C) -> Self {
         self.variants.extend(c);
         self
     }
 
+    #[track_caller]
     pub fn extensions<C: IntoIterator<Item = &'a str>>(mut self, c: C) -> Self {
-        self.extensions.extend(c.into_iter().map(Into::into));
+        self.extensions.extend(c.into_iter().map(|s| {
+            Extension::try_from(s)
+                .unwrap_or_else(|err| panic!("invalid extension: {err}"))
+                .into()
+        }));
         self
     }
 
+    #[track_caller]
+    #[inline]
     pub fn private_names<C: IntoIterator<Item = &'a str>>(mut self, c: C) -> Self {
         self.private.extend(c);
         self

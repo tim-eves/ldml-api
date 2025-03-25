@@ -1,6 +1,6 @@
 use crate::{Builder, TagBuffer};
 use std::{
-    fmt::{Display, Write},
+    fmt::Display,
     hash::Hash,
     iter::{once, FusedIterator},
     num::NonZeroUsize,
@@ -218,12 +218,12 @@ impl Tag {
         let mut ns = buf.chars().next().unwrap_or_default();
         for ext in extensions {
             let ext = ext.as_ref();
-            let er = ExtensionRef::try_from(ext).expect("should be an extension");
+            let er = Extension::try_from(ext).expect("should be an extension");
             buf.push('-');
-            buf.push_str(if ns == er.namespace {
-                er.name
+            buf.push_str(if ns == er.namespace() {
+                er.name()
             } else {
-                ns = er.namespace;
+                ns = er.namespace();
                 ext
             });
         }
@@ -516,15 +516,24 @@ impl DoubleEndedIterator for Subtags<'_> {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ExtensionRef<'c> {
-    name: &'c str,
-    namespace: char,
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Extension {
+    buffer: TagBuffer,
 }
 
-impl PartialEq<&str> for ExtensionRef<'_> {
+impl Extension {
+    pub fn namespace(&self) -> char {
+        self.buffer.as_bytes()[0] as char
+    }
+
+    pub fn name(&self) -> &str {
+        &self.buffer[2..]
+    }
+}
+
+impl PartialEq<&str> for Extension {
     fn eq(&self, other: &&str) -> bool {
-        [self.namespace as u8, b'-'].eq(&other.as_bytes()[..2]) && self.name.eq(&other[2..])
+        self.buffer.eq(other)
     }
 }
 
@@ -548,73 +557,64 @@ impl Display for ParseExtensionError {
     }
 }
 
-impl From<ExtensionRef<'_>> for TagBuffer {
-    fn from(value: ExtensionRef<'_>) -> Self {
-        let mut buf = TagBuffer::default();
-        buf.push(value.namespace);
-        buf.push('-');
-        buf.push_str(value.name);
-        buf
+impl From<Extension> for TagBuffer {
+    fn from(value: Extension) -> Self {
+        value.buffer
     }
 }
 
-impl<'c> TryFrom<&'c str> for ExtensionRef<'c> {
+impl<'c> TryFrom<&'c str> for Extension {
     type Error = ParseExtensionError;
+
     fn try_from(s: &'c str) -> Result<Self, Self::Error> {
-        let ns = &s.as_bytes()[..2];
-        match ns {
-            [n, b'-'] if n.is_ascii() => {
-                if s.len() > 10 || s.len() < 4 {
-                    Err(ParseExtensionError::NameToLong)
+        match s.as_bytes() {
+            [n, b'-', ..] if n.is_ascii() => {
+                if matches!(s.len(), 4..=10) {
+                    Ok(Extension { buffer: s.into() })
                 } else {
-                    Ok(ExtensionRef {
-                        namespace: *n as char,
-                        name: &s[2..],
-                    })
+                    Err(ParseExtensionError::NameToLong)
                 }
             }
-            [_, b'-'] => Err(ParseExtensionError::InvalidNamespace),
+            [_, b'-', ..] => Err(ParseExtensionError::InvalidNamespace),
             _ => Err(ParseExtensionError::MissingNamespace),
         }
     }
 }
 
-impl Display for ExtensionRef<'_> {
+impl Display for Extension {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_char(self.namespace)?;
-        f.write_char('-')?;
-        f.write_str(self.name)
+        self.buffer.fmt(f)
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct Extentions<'c> {
     subtags: SplitTerminator<'c, char>,
-    curr_ns: char,
+    prefix: TagBuffer,
 }
 
 impl<'c> Extentions<'c> {
     fn new<'a: 'c>(subtags: &'a str) -> Self {
         Extentions {
             subtags: subtags.split_terminator('-'),
-            curr_ns: Default::default(),
+            prefix: " -".into(),
         }
     }
 }
 
-impl<'c> Iterator for Extentions<'c> {
-    type Item = ExtensionRef<'c>;
+impl Iterator for Extentions<'_> {
+    type Item = Extension;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let mut n = self.subtags.next()?;
         if n.len() == 1 {
-            self.curr_ns = n.chars().next()?;
+            // SAFETY: We know there is at least 1 character due to the len check above.
+            unsafe { self.prefix.as_bytes_mut()[0] = n.chars().next().unwrap_unchecked() as u8 };
             n = self.subtags.next()?;
         }
-        Some(ExtensionRef {
-            name: n,
-            namespace: self.curr_ns,
+        Some(Extension {
+            buffer: self.prefix.clone() + n,
         })
     }
 }
@@ -631,11 +631,6 @@ impl FusedIterator for Extentions<'_> {}
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // TODO: Make sure these test tags are exervised somewhere:
-    // "en-Latn-US-1abc-2def-3ghi-a-abcdef-b-ghijklmn-c-tester-x-priv"
-    // "en-Latn-US-1abc-2def-3ghi-a-abcdef-b-ghijklmn-c-tester"
-    // "en-Latn-US-1abc-2def-3ghi"
 
     #[test]
     fn constructors() {

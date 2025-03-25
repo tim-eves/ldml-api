@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use language_tag::{ExtensionRef, ParseTagError, Tag};
+use language_tag::{Extension, ParseTagError, Tag};
 
 #[test]
 fn builder() {
@@ -160,7 +160,7 @@ fn getters() {
     assert_eq!(tag.variants().collect::<Vec<_>>(), Vec::<&str>::new());
     assert_eq!(
         tag.extensions().collect::<Vec<_>>(),
-        Vec::<ExtensionRef>::new()
+        Vec::<Extension>::new()
     );
 }
 
@@ -217,7 +217,7 @@ fn setters() {
         Tag::from_str("en-Latn-US-1abc-2def-3ghi-a-abcdef-b-ghijklmn-c-tester-x-priv").unwrap()
     );
 
-    tag.set_script("");
+    tag.clear_script();
     assert_eq!(
         tag,
         Tag::from_str("en-US-1abc-2def-3ghi-a-abcdef-b-ghijklmn-c-tester-x-priv").unwrap()

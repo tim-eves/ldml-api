@@ -1,5 +1,5 @@
 use crate::{tagset::TagSet, StringRepr};
-use language_tag::{ExtensionRef, Tag};
+use language_tag::{Extension, Tag};
 use std::collections::{HashMap as Map, HashSet as Set};
 
 #[derive(Debug, Default, PartialEq)]
@@ -62,10 +62,7 @@ impl LangTags {
             })
     }
 
-    fn valid_extensions<'a>(
-        ts: &TagSet,
-        extensions: impl IntoIterator<Item = ExtensionRef<'a>>,
-    ) -> bool {
+    fn valid_extensions(ts: &TagSet, extensions: impl IntoIterator<Item = Extension>) -> bool {
         let supplied_extensions: Set<_> = extensions.into_iter().collect();
         supplied_extensions.is_empty() || {
             let mut candidate_extensions = ts.iter().map(|t| t.extensions().collect::<Set<_>>());
