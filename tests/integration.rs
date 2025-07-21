@@ -1,33 +1,14 @@
-use axum::{
-    body::Body,
-    http::{Request, StatusCode},
-    response::Response,
-    Router,
-};
+use axum::{body::Body, http::{header::LOCATION, Request, StatusCode}, response::Response, Router};
 use axum_extra::headers::{CacheControl, HeaderMapExt};
-use hyper::header::LOCATION;
-use langtags::json::LangTags;
 use language_tag::Tag;
-use ldml_api::{
-    app,
-    config::{self, Profiles},
-};
+use ldml_api::{app, config::Profiles};
 use serde_json::json;
-use std::{path::Path, str::FromStr, sync::LazyLock};
+use std::{str::FromStr, sync::LazyLock};
 use tower::{util::ServiceExt, Service};
 
-fn parse_config(langtags: impl AsRef<Path>, sldr: impl AsRef<Path>) -> Profiles {
-    config::Profiles::from_reader(
-        json!({"test": {"langtags": langtags.as_ref(), "sldr": sldr.as_ref()}})
-            .to_string()
-            .as_bytes(),
-    )
-    .expect("should parse generated configuration")
-    .set_fallback("test")
-    .expect(" should set default profile to: \"test\"")
-}
+mod common;
 
-static PROFILES: LazyLock<Profiles> = LazyLock::new(|| parse_config("tests/short", "tests"));
+static PROFILES: LazyLock<Profiles> = LazyLock::new(|| common::parse_config("tests/short", "tests"));
 
 #[inline]
 fn get_app() -> Router {
@@ -241,20 +222,6 @@ async fn status_page() {
     assert_eq!(std::str::from_utf8(&body), Ok(status_body.as_str()));
 }
 
-async fn request_ldml_file(app: &mut Router, tag: &Tag) -> StatusCode {
-    let response = app
-        .oneshot(
-            Request::builder()
-                .uri(format!("/{tag}"))
-                .body(Body::empty())
-                .expect(&format!("should request LDML for \"{tag}\" ")),
-        )
-        .await
-        .unwrap();
-
-    response.status()
-}
-
 #[tokio::test]
 async fn query_tags() {
     let app = get_app();
@@ -290,7 +257,7 @@ async fn simple_writing_system_request() {
         ($tag:literal) => {
             let tag = Tag::from_str($tag).expect(concat!("should parse \"", $tag, '"'));
             assert_eq!(
-                request_ldml_file(&mut app, &tag).await,
+                common::request_ldml_file(&mut app, &tag).await,
                 StatusCode::OK,
                 "NotFound: {tag}"
             );
@@ -303,51 +270,11 @@ async fn simple_writing_system_request() {
     assert_tag_exists!("eka-NG-x-ekajuk");
     assert_tag_exists!("eka-NG-x-ekajuk");
     assert_eq!(
-        request_ldml_file(
+        common::request_ldml_file(
             &mut app,
             &Tag::from_str("en-KP").expect("should parse \"en-KP\"")
         )
         .await,
         StatusCode::NOT_FOUND
     );
-}
-
-fn generate_testing_tag_list(langtags: &LangTags) -> impl Iterator<Item = Tag> + '_ {
-    langtags
-        .tagsets()
-        .filter_map(|ts| ts.sldr.then(|| ts.iter()))
-        .flatten()
-        .cloned()
-}
-
-#[ignore = "requires production data set."]
-#[tokio::test]
-async fn palaso_writing_systems_list_production() {
-    palaso_writing_systems_list("production").await
-}
-
-#[ignore = "requires staging data set."]
-#[tokio::test]
-async fn palaso_writing_systems_list_staging() {
-    palaso_writing_systems_list("staging").await
-}
-
-async fn palaso_writing_systems_list(profile: &str) {
-    let src_top_level = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let cfg = parse_config(
-        src_top_level.join("data/langtags").join(profile),
-        src_top_level.join("data/sldr").join(profile),
-    );
-    let mut tags = generate_testing_tag_list(&cfg.fallback().langtags).collect::<Vec<_>>();
-    tags.sort();
-    let mut app = app(cfg).expect("lb::app should return configured Router");
-    for (l, tag) in tags.into_iter().enumerate() {
-        let status = request_ldml_file(&mut app, &tag).await;
-        assert_eq!(
-            status,
-            StatusCode::OK,
-            "{profile}: Tag {tag} at line {line}: not found",
-            line = l + 1
-        );
-    }
 }
