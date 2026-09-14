@@ -11,7 +11,8 @@ configMapGenerator:
   - config/hooks.yaml
 resources:
 - deployment.yaml
-- ingress.yaml
+#- ingress.yaml
+- httproute.yaml
 - rbac.yaml
 - service.yaml
 - storage.yaml

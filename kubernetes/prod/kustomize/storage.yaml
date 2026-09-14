@@ -4,7 +4,7 @@ metadata:
   name: data-sets
   namespace: wstech
 spec:
-  #storageClassName: longhorn
+  storageClassName: do-block-storage
   accessModes:
     - ReadWriteOnce
   resources:
