@@ -137,6 +137,8 @@ enum Header {
         scripts: Vec<StringRepr>,
         regions: Vec<StringRepr>,
     },
+    #[serde(untagged)]
+    Unknown { tag: StringRepr },
 }
 
 impl LangTags {
@@ -168,6 +170,11 @@ impl LangTags {
                 Header::Conformance { scripts, regions } => {
                     langtags.scripts.extend(scripts);
                     langtags.regions.extend(regions);
+                }
+                Header::Unknown { tag, .. } if tag.starts_with('_') => continue,
+                _ => {
+                    tagset_start -= 1;
+                    break;
                 }
             }
         }
