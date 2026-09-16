@@ -1,4 +1,9 @@
-use axum::{body::Body, http::{header::LOCATION, Request, StatusCode}, response::Response, Router};
+use axum::{
+    body::Body,
+    http::{header::LOCATION, Request, StatusCode},
+    response::Response,
+    Router,
+};
 use axum_extra::headers::{CacheControl, HeaderMapExt};
 use language_tag::Tag;
 use ldml_api::{app, config::Profiles};
@@ -8,7 +13,8 @@ use tower::{util::ServiceExt, Service};
 
 mod common;
 
-static PROFILES: LazyLock<Profiles> = LazyLock::new(|| common::parse_config("tests/short", "tests"));
+static PROFILES: LazyLock<Profiles> =
+    LazyLock::new(|| common::parse_config("tests/short", "tests"));
 
 #[inline]
 fn get_app() -> Router {
