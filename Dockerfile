@@ -1,10 +1,13 @@
 # syntax=docker/dockerfile:1
-FROM rust:1.82 AS builder
+FROM rust:1.98.1 AS builder
 WORKDIR /usr/src/ldml-api
 COPY . .
+RUN --mount=type=cache,target=/var/cache/apt \
+    --mount=type=cache,target=/var/lib/apt \
+    apt-get update && apt-get -y install libclang-dev
 RUN cargo install --path .
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 LABEL org.opencontainers.image.authors="tim_eves@sil.org"
 LABEL org.opencontainers.image.description="Modern LDML API endpoint that uses langtags.json, adds etag support and full langtag validation."
 LABEL org.opencontainers.image.source="https://github.com/tim-eves/ldml-api"
