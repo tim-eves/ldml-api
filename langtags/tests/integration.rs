@@ -189,9 +189,15 @@ fn sanity_check_script() {
 fn sanity_check_regions() {
     for ts in LTDB.tagsets() {
         // Sanity check regions
-        assert!(!ts
-            .regions
-            .contains(&ts.region().expect("Tag should have a region subtag").into()));
+        assert!(
+            !ts.regions.contains(
+                &ts.region()
+                    .expect("Full tag should have a region subtag")
+                    .into()
+            ),
+            "{full}/regions[] contains redundant region from fulltag",
+            full = ts.full
+        );
         let regions: Set<&str> = ts
             .regions
             .iter()
