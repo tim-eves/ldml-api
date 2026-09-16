@@ -389,7 +389,7 @@ impl Tag {
     }
 
     #[inline]
-    pub fn variants(&self) -> Subtags {
+    pub fn variants(&self) -> Subtags<'_> {
         let mut range = self.end.region as usize..self.end.variants as usize;
         if !range.is_empty() {
             range.start += 1;
@@ -398,7 +398,7 @@ impl Tag {
     }
 
     #[inline]
-    pub fn extensions(&self) -> Extentions {
+    pub fn extensions(&self) -> Extentions<'_> {
         let mut range = self.end.variants as usize..self.end.extensions as usize;
         if !range.is_empty() {
             range.start += 1;
@@ -407,7 +407,7 @@ impl Tag {
     }
 
     #[inline]
-    pub fn private(&self) -> Subtags {
+    pub fn private(&self) -> Subtags<'_> {
         let mut range = self.end.extensions as usize..self.buf.len();
         if !range.is_empty() {
             range.start += 3;
